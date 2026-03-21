@@ -138,6 +138,14 @@
                 <span>Download</span>
               </span>
             </a>
+            <a
+              href="/login"
+              class="rounded-full bg-gradient-to-r from-zinc-400 to-zinc-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-zinc-500/30 transition-all hover:from-zinc-500 hover:to-zinc-700 cursor-pointer"
+            >
+              <span class="inline-flex items-center space-x-2">
+                <span>Login</span>
+              </span>
+            </a>
           </div>
           <button
             onclick={toggleMobileMenu}
@@ -178,6 +186,12 @@
             >
               <Download size={16} />
               <span>Download</span>
+            </a>
+            <a
+              href="/login"
+              class="rounded-full bg-gradient-to-r from-zinc-400 to-zinc-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-zinc-500/30 transition-all hover:from-zinc-500 hover:to-zinc-700 flex-1 flex justify-center items-center gap-2 cursor-pointer"
+            >
+              <span>Login</span>
             </a>
           </div>
         </div>
