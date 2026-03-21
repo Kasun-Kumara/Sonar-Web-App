@@ -39,6 +39,11 @@
   <meta name="twitter:creator" content="@knurdz" />
 </svelte:head>
 
+{#if page.url.pathname.startsWith("/admin-panel")}
+  <main class="min-h-screen bg-white">
+    {@render children()}
+  </main>
+{:else}
 <div
   class="relative isolate min-h-screen flex flex-col overflow-x-clip bg-[#f7fbff] dark:bg-[#071018] text-zinc-900 dark:text-zinc-50 font-sans selection:bg-cyan-400/20 transition-colors duration-200"
 >
@@ -373,3 +378,4 @@
     </div>
   </footer>
 </div>
+{/if}

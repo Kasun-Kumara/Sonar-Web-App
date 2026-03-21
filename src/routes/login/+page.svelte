@@ -1,11 +1,19 @@
 <script lang="ts">
   import { Github, Mail, User, Briefcase, Lock, Building2 } from "lucide-svelte";
+  import { goto } from "$app/navigation";
 
   let isLogin = $state(true);
   let accountType = $state("individual"); // 'individual' | 'organization'
 
   function toggleMode() {
     isLogin = !isLogin;
+  }
+
+  function handleSubmit(event: Event) {
+    event.preventDefault();
+    // In a real app, we would validate credentials here.
+    // For now, any input navigates to the admin panel.
+    goto("/admin-panel");
   }
 </script>
 
@@ -67,7 +75,7 @@
           </div>
         </div>
 
-        <form class="space-y-5">
+        <form class="space-y-5" onsubmit={handleSubmit}>
           {#if !isLogin}
             <div class="grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 p-1 dark:border-white/10">
               <button
