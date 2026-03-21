@@ -56,7 +56,7 @@
           </button>
         </div>
 
-        <div class="relative my-14">
+        <div class="relative my-2 sm:my-3">
           <div class="absolute inset-0 flex items-center">
             <span class="w-full border-t border-zinc-200 dark:border-white/10"></span>
           </div>
