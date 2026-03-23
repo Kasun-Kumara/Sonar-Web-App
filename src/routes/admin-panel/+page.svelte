@@ -1,96 +1,84 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { authStore } from '$lib/stores/auth';
 	import {
-		getAllSessions,
-		subscribeToActivityLogs,
-		subscribeToSessions,
-		getAllActivityLogs,
-		getAdminTeamIds,
-		parseSyncData
+		updateTeamName,
+		updateTeamPassword,
+		flushAllActivityLogs,
+		getGlobalInternetRestriction,
+		setGlobalInternetRestriction
 	} from '$lib/appwrite';
-	import type { Session, ActivityLog, ActivitySyncData, TeamStatus, Team } from '$lib/types';
-	import AdminSettingsModal from './AdminSettingsModal.svelte';
-	import ReportModal from './ReportModal.svelte';
+	import type { Team } from '$lib/types';
 	import {
-		Radar,
-		Shield,
-		Clock,
-		Activity,
-		LayoutGrid,
-		List,
-		Search,
+		LayoutDashboard,
+		Settings,
 		LogOut,
-		RefreshCw,
-		BarChart2,
-		ShieldAlert,
-		Monitor,
+		Plus,
+		Calendar,
 		Users,
-		Zap,
+		MapPin,
+		Eye,
+		EyeOff,
+		Key,
 		CheckCircle2,
-		XCircle,
-		Settings
+		Trash2,
+		Search,
+		X
 	} from 'lucide-svelte';
-
-	const HEARTBEAT_INTERVAL_MS = 15000 * 2; // 30 seconds
+	import CreateHackathonDrawer from './CreateHackathonDrawer.svelte';
 
 	let user = $state<Team | null>(null);
-	let teams = $state<TeamStatus[]>([]);
-	let activityLogs = $state<ActivityLog[]>([]);
-	let loading = $state(true);
-	let search = $state('');
-	let lastUpdated = $state<Date | null>(null);
-	let selectedTeam = $state<TeamStatus | null>(null);
-	let showReport = $state(false);
-	let sortKey = $state<'teamName' | 'status' | 'lastSeen'>('status');
-	let sortDir = $state<'asc' | 'desc'>('asc');
-	let statusFilter = $state<'all' | 'online' | 'offline'>('all');
-	let viewMode = $state<'table' | 'grid'>('table');
-	let showSettings = $state(false);
 	let theme = $state('system');
+	let activeTab = $state<'dashboard' | 'hackathons' | 'settings'>('dashboard');
+	let hackathons = $state<any[]>([]);
+	let showCreateDrawer = $state(false);
 
-	let unsubFunctions: Array<() => void> = [];
-	let adminIds = $state(new Set<string>());
-	let pollInterval: NodeJS.Timeout | null = null;
-	let staleCheckInterval: NodeJS.Timeout | null = null;
+	// Settings state
+	let searchQuery = $state('');
+	let settingsActiveTab = $state('Account');
+	let editingName = $state(false);
+	let newTeamName = $state('');
+	let nameError = $state('');
+	let nameSuccess = $state('');
+	let savingName = $state(false);
 
-	// Check auth on mount
+	let oldPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let passwordError = $state('');
+	let passwordSuccess = $state('');
+	let savingPassword = $state(false);
+	let showOldPassword = $state(false);
+	let showNewPassword = $state(false);
+	let showConfirmPassword = $state(false);
+
+	let flushing = $state(false);
+	let flushError = $state('');
+	let flushSuccess = $state('');
+
+	let globalRestriction = $state(false);
+	let savingRestriction = $state(false);
+	let restrictionError = $state('');
+	let restrictionSuccess = $state('');
+
 	onMount(() => {
 		if (browser) {
 			const stored = localStorage.getItem('sonar_session');
 			if (stored) {
 				try {
-					const parsedUser = JSON.parse(stored);
-					user = parsedUser;
+					user = JSON.parse(stored);
 				} catch {
-					// No session, but allow access for now
 					user = { teamName: 'Admin', role: 'admin', $id: 'temp' } as Team;
 				}
 			} else {
-				// Temporarily allow access without auth
 				user = { teamName: 'Admin', role: 'admin', $id: 'temp' } as Team;
 			}
 
 			const storedTheme = localStorage.getItem('ide-theme') || 'system';
 			theme = storedTheme;
 			applyTheme(storedTheme);
-		}
-
-		loadSessions();
-		setupSubscriptions();
-		pollInterval = setInterval(loadSessions, 30000);
-		staleCheckInterval = setInterval(() => {
-			teams = applyStaleCheck(teams);
-		}, 5000);
-	});
-
-	onDestroy(() => {
-		if (browser) {
-			unsubFunctions.forEach((fn) => fn());
-			if (pollInterval) clearInterval(pollInterval);
-			if (staleCheckInterval) clearInterval(staleCheckInterval);
 		}
 	});
 
@@ -110,256 +98,146 @@
 		document.documentElement.setAttribute('data-theme', activeTheme);
 	}
 
-	function applyStaleCheck(teamsList: TeamStatus[]): TeamStatus[] {
-		const now = Date.now();
-		return teamsList.map((s) => {
-			const lastSeenMs = new Date(s.lastSeen).getTime();
-			const stale = now - lastSeenMs > HEARTBEAT_INTERVAL_MS;
-			if (stale && s.status === 'online') return { ...s, status: 'offline' as const };
-			return s;
-		});
-	}
-
-	async function loadSessions() {
-		const [sessions, logs, adminIdSet] = await Promise.all([
-			getAllSessions(),
-			getAllActivityLogs(100),
-			getAdminTeamIds()
-		]);
-		adminIds = adminIdSet;
-
-		const syncMap = new Map<string, ActivitySyncData>();
-		const logMetaMap = new Map<
-			string,
-			{ currentWindow?: string; currentFile?: string }
-		>();
-		for (const log of logs) {
-			if (!syncMap.has(log.teamId)) {
-				syncMap.set(log.teamId, parseSyncData(log));
-				logMetaMap.set(log.teamId, {
-					currentWindow: log.currentWindow,
-					currentFile: log.currentFile
-				});
-			}
-		}
-
-		const now = Date.now();
-		const fetched = sessions
-			.filter((s) => !adminIds.has(s.teamId))
-			.map((s) => {
-				const lastSeenMs = new Date(s.lastSeen).getTime();
-				const stale = now - lastSeenMs > HEARTBEAT_INTERVAL_MS;
-				const meta = logMetaMap.get(s.teamId);
-				return {
-					...s,
-					status: stale ? 'offline' : s.status,
-					syncData: syncMap.get(s.teamId),
-					currentWindow: meta?.currentWindow,
-					currentFile: meta?.currentFile
-				} as TeamStatus;
-			});
-
-		// Merge with existing to preserve realtime data
-		const prevMap = new Map(teams.map((t) => [t.teamId, t]));
-		teams = fetched.map((s) => {
-			const existing = prevMap.get(s.teamId);
-			if (!existing) return s;
-			const existingMs = new Date(existing.lastSeen).getTime();
-			const fetchedMs = new Date(s.lastSeen).getTime();
-			if (existingMs > fetchedMs) {
-				return {
-					...s,
-					lastSeen: existing.lastSeen,
-					status: existing.status,
-					currentWindow: existing.currentWindow || s.currentWindow,
-					currentFile: existing.currentFile || s.currentFile,
-					lastActivity: existing.lastActivity
-				};
-			}
-			return {
-				...s,
-				currentWindow: s.currentWindow || existing.currentWindow,
-				currentFile: s.currentFile || existing.currentFile,
-				lastActivity: existing.lastActivity
-			};
-		});
-		activityLogs = logs;
-		lastUpdated = new Date();
-		loading = false;
-	}
-
-	function setupSubscriptions() {
-		const unsubActivity = subscribeToActivityLogs((log: ActivityLog) => {
-			if (adminIds.has(log.teamId)) return;
-			const sync = parseSyncData(log);
-			teams = teams.map((t) => {
-				if (t.teamId !== log.teamId) return t;
-				return {
-					...t,
-					currentWindow: log.currentWindow || t.currentWindow,
-					currentFile: log.currentFile || t.currentFile,
-					status: 'online' as const,
-					lastSeen: log.timestamp,
-					lastActivity: log.timestamp,
-					syncData: sync
-				};
-			});
-			activityLogs = [log, ...activityLogs.filter((l) => l.teamId !== log.teamId)];
-			lastUpdated = new Date();
-		});
-
-		const unsubSessions = subscribeToSessions((session: Session) => {
-			if (adminIds.has(session.teamId)) return;
-			const idx = teams.findIndex((t) => t.teamId === session.teamId);
-			if (idx === -1) {
-				teams = [...teams, session as TeamStatus];
-			} else {
-				teams = teams.map((t, i) => (i === idx ? { ...t, ...session } : t));
-			}
-			lastUpdated = new Date();
-		});
-
-		unsubFunctions = [unsubActivity, unsubSessions];
-	}
-
 	function logout() {
 		authStore.logout();
 		goto('/login');
 	}
 
-	// Computed values using $derived
-	const onlineCount = $derived(teams.filter((t) => t.status === 'online').length);
-	const offlineCount = $derived(teams.filter((t) => t.status === 'offline').length);
-	const onlinePercent = $derived(
-		teams.length > 0 ? Math.round((onlineCount / teams.length) * 100) : 0
+	const matchesSearch = (text: string) =>
+		searchQuery === '' || text.toLowerCase().includes(searchQuery.toLowerCase());
+
+	const isSearching = $derived(searchQuery.trim().length > 0);
+
+	const showAccount = $derived(
+		!isSearching
+			? settingsActiveTab === 'Account'
+			: matchesSearch('Account') ||
+					matchesSearch('Team') ||
+					matchesSearch('Name') ||
+					matchesSearch('Password') ||
+					matchesSearch('Sign Out')
 	);
 
-	const teamMetrics = $derived.by(() => {
-		const metrics = new Map();
-		for (const team of teams) {
-			const sync = team.syncData;
-			if (!sync) continue;
-			const apps = Object.keys(sync.apps);
-			let appBlurCount = 0;
-			let extPasteCount = 0;
-			let onlineEventCount = 0;
-			let clipboardCopyCount = 0;
-			const events = sync.activityEvents || [];
-			for (const e of events) {
-				if (e.type === 'app_blur') appBlurCount++;
-				else if (e.type === 'clipboard_paste_external') extPasteCount++;
-				else if (e.type === 'status_online') onlineEventCount++;
-				else if (e.type === 'clipboard_copy') clipboardCopyCount++;
-			}
-			metrics.set(team.teamId, {
-				totalLogs: sync.heartbeatCount,
-				uniqueApps: new Set(apps),
-				uniqueWindows: new Set(sync.windows),
-				lastFile: sync.files.length > 0 ? sync.files[sync.files.length - 1] : '',
-				lastWindow: sync.windows.length > 0 ? sync.windows[sync.windows.length - 1] : '',
-				firstSeen: sync.sessionStart,
-				lastSeen: sync.lastStatusAt,
-				onlineSec: sync.totalOnlineSec,
-				offlineSec: sync.totalOfflineSec,
-				appBlurCount,
-				extPasteCount,
-				onlineCount: onlineEventCount,
-				clipboardCopyCount,
-				totalEvents: events.length
-			});
+	const showActivityLogs = $derived(
+		!isSearching
+			? settingsActiveTab === 'Activity Logs'
+			: matchesSearch('Flush') || matchesSearch('Activity') || matchesSearch('Logs')
+	);
+
+	const showPrivacy = $derived(
+		!isSearching
+			? settingsActiveTab === 'Privacy'
+			: matchesSearch('Privacy') ||
+					matchesSearch('Block') ||
+					matchesSearch('Internet') ||
+					matchesSearch('Restriction')
+	);
+
+	const showAppearance = $derived(
+		!isSearching
+			? settingsActiveTab === 'Appearance'
+			: matchesSearch('Appearance') ||
+					matchesSearch('Color Theme') ||
+					matchesSearch('interface theme')
+	);
+
+	async function handleSaveName() {
+		const trimmed = newTeamName.trim();
+		if (!trimmed) {
+			nameError = 'Team name cannot be empty';
+			return;
 		}
-		return metrics;
-	});
-
-	const globalInsights = $derived.by(() => {
-		const switchedAppCounts = new Map<string, number>();
-		let totalOnlineSec = 0;
-		let totalOfflineSec = 0;
-		let totalHeartbeats = 0;
-		for (const team of teams) {
-			const sync = team.syncData;
-			if (!sync) continue;
-			totalHeartbeats += sync.heartbeatCount;
-			totalOnlineSec += sync.totalOnlineSec;
-			totalOfflineSec += sync.totalOfflineSec;
-			for (const ev of sync.activityEvents || []) {
-				if (ev.type === 'app_blur' && ev.details) {
-					const m = ev.details.match(/^(?:Switched to|Active app):\s*(.+)$/i);
-					if (m) {
-						const raw = m[1].trim();
-						const parts = raw.split(' - ');
-						const appName = parts[parts.length - 1].trim() || raw;
-						switchedAppCounts.set(appName, (switchedAppCounts.get(appName) || 0) + 1);
-					}
-				}
-			}
+		if (!user?.$id) return;
+		if (trimmed === user.teamName) {
+			editingName = false;
+			return;
 		}
-		const topApps = Array.from(switchedAppCounts.entries())
-			.sort((a, b) => b[1] - a[1])
-			.slice(0, 5);
-		const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-		const recentlyActive = teams.filter((t) => new Date(t.lastSeen).getTime() > fiveMinAgo)
-			.length;
-		return { totalLogs: totalHeartbeats, uniqueApps: switchedAppCounts.size, topApps };
-	});
 
-	const filteredTeams = $derived.by(() => {
-		let result = teams.filter(
-			(t) => !search || t.teamName.toLowerCase().includes(search.toLowerCase())
-		);
-		if (statusFilter !== 'all') {
-			result = result.filter((t) => t.status === statusFilter);
+		savingName = true;
+		nameError = '';
+		nameSuccess = '';
+		const result = await updateTeamName(user.$id, trimmed);
+		if (result.success) {
+			nameSuccess = 'Team name updated successfully';
+			editingName = false;
+			handleTeamNameUpdated(trimmed);
+		} else {
+			nameError = result.error || 'Failed to update team name';
 		}
-		result.sort((a, b) => {
-			let cmp = 0;
-			if (sortKey === 'teamName') cmp = a.teamName.localeCompare(b.teamName);
-			else if (sortKey ===
+		savingName = false;
+	}
 
- 'status') cmp = a.status.localeCompare(b.status);
-			else if (sortKey === 'lastSeen')
-				cmp = new Date(a.lastSeen).getTime() - new Date(b.lastSeen).getTime();
-			return sortDir === 'asc' ? cmp : -cmp;
-		});
-		return result;
-	});
+	async function handleChangePassword() {
+		passwordError = '';
+		passwordSuccess = '';
 
-	function handleSort(key: 'teamName' | 'status' | 'lastSeen') {
-		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-		else {
-			sortKey = key;
-			sortDir = 'asc';
+		if (!oldPassword) {
+			passwordError = 'Please enter your current password';
+			return;
 		}
+		if (!newPassword) {
+			passwordError = 'Please enter a new password';
+			return;
+		}
+		if (newPassword.length < 4) {
+			passwordError = 'New password must be at least 4 characters';
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			passwordError = 'New passwords do not match';
+			return;
+		}
+		if (!user?.$id) return;
+
+		savingPassword = true;
+		const result = await updateTeamPassword(user.$id, oldPassword, newPassword);
+		if (result.success) {
+			passwordSuccess = 'Password updated successfully';
+			oldPassword = '';
+			newPassword = '';
+			confirmPassword = '';
+		} else {
+			passwordError = result.error || 'Failed to update password';
+		}
+		savingPassword = false;
 	}
 
-	function formatTime(iso: string) {
-		if (! iso) return '—';
-		return new Date(iso).toLocaleTimeString();
+	async function handleFlushLogs() {
+		if (
+			!window.confirm(
+				'Are you sure you want to flush all activity logs? This action cannot be undone.'
+			)
+		)
+			return;
+		flushing = true;
+		flushError = '';
+		flushSuccess = '';
+		const result = await flushAllActivityLogs();
+		if (result.success) {
+			flushSuccess = 'All activity logs have been flushed successfully';
+		} else {
+			flushError = result.error || 'Failed to flush activity logs';
+		}
+		flushing = false;
 	}
 
-	function timeSince(iso: string) {
-		if (!iso) return '—';
-		const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-		if (diff < 60) return `${diff}s ago`;
-		if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-		return `${Math.floor(diff / 3600)}h ago`;
-	}
-
-	function formatDuration(ms: number) {
-		if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-		if (ms < 3600000) return `${Math.round(ms / 60000)}m`;
-		const h = Math.floor(ms / 3600000);
-		const m = Math.round((ms % 3600000) / 60000);
-		return `${h}h ${m}m`;
-	}
-
-	function sortIcon(key: 'teamName' | 'status' | 'lastSeen') {
-		if (sortKey !== key) return '↕';
-		return sortDir === 'asc' ? '↑' : '↓';
-	}
-
-	function handleOpenReport(team: TeamStatus) {
-		selectedTeam = team;
-		showReport = true;
+	async function handleToggleRestriction(checked: boolean) {
+		savingRestriction = true;
+		restrictionError = '';
+		restrictionSuccess = '';
+		const result = await setGlobalInternetRestriction(checked);
+		if (result.success) {
+			globalRestriction = checked;
+			restrictionSuccess = checked
+				? 'Internet blocking enabled for all teams'
+				: 'Internet blocking disabled for all teams';
+			setTimeout(() => {
+				restrictionSuccess = '';
+			}, 3000);
+		} else {
+			restrictionError = result.error || 'Failed to update restriction';
+		}
+		savingRestriction = false;
 	}
 
 	function handleTeamNameUpdated(newName: string) {
@@ -369,403 +247,594 @@
 			if (browser) window.location.reload();
 		}
 	}
+
+	$effect(() => {
+		if (activeTab === 'settings') {
+			settingsActiveTab = 'Account';
+			searchQuery = '';
+			newTeamName = user?.teamName || '';
+			editingName = false;
+			nameError = '';
+			nameSuccess = '';
+			oldPassword = '';
+			newPassword = '';
+			confirmPassword = '';
+			passwordError = '';
+			passwordSuccess = '';
+			flushError = '';
+			flushSuccess = '';
+			globalRestriction = false;
+			restrictionError = '';
+			restrictionSuccess = '';
+			if (user?.role === 'admin') {
+				getGlobalInternetRestriction()
+					.then((result) => {
+						globalRestriction = result;
+					})
+					.catch(console.error);
+			}
+		}
+	});
+
+	function handleSaveHackathon(hackathonData: any) {
+		hackathons = [...hackathons, hackathonData];
+	}
 </script>
 
 <svelte:head>
-	<title>Admin Dashboard - Sonar IDE</title>
+	<title>Admin Panel - Sonar IDE</title>
 </svelte:head>
 
-<div class="admin-container">
-	<div class="admin-header">
-		<div class="admin-header-left">
-			<div class="admin-logo">
-				<span class="logo-icon-wrapper">
-					<Radar class="logo-icon" size={20} />
-				</span>
-				<span class="logo-text">Sonar Admin</span>
+<div class="admin-panel-container">
+	<!-- Vertical Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<div class="sidebar-logo">
+				<img src="/favicon.png" alt="Sonar Logo" class="logo-img" />
 			</div>
-			<span class="admin-live-badge">
-				<span class="live-dot" />
-				Live System
-			</span>
+			<h2>Sonar Admin</h2>
 		</div>
-		<div class="admin-header-right">
-			{#if lastUpdated}
-				<span class="last-updated">
-					<Clock class="meta-icon" size={12} />
-					{formatTime(lastUpdated.toISOString())}
-				</span>
-			{/if}
+
+		<nav class="sidebar-nav">
 			<button
-				class="admin-btn icon-btn"
-				onclick={() => (showSettings = true)}
-				title="Admin Settings"
+				class="nav-item"
+				class:active={activeTab === 'dashboard'}
+				onclick={() => (activeTab = 'dashboard')}
 			>
-				<Settings size={14} />
+				<LayoutDashboard size={20} />
+				<span>Dashboard</span>
 			</button>
 			<button
-				class="admin-btn icon-btn"
-				onclick={loadSessions}
-				title="Refresh Data"
+				class="nav-item"
+				class:active={activeTab === 'hackathons'}
+				onclick={() => (activeTab = 'hackathons')}
 			>
-				<RefreshCw size={14} class={loading ? 'anim-spin' : ''} />
+				<MapPin size={20} />
+				<span>Hackathons</span>
 			</button>
-			<div class="admin-user-pill">
-				<ShieldAlert size={14} class="user-icon" />
-				{user?.teamName || 'Admin'}
+			<button
+				class="nav-item"
+				class:active={activeTab === 'settings'}
+				onclick={() => (activeTab = 'settings')}
+			>
+				<Settings size={20} />
+				<span>Settings</span>
+			</button>
+		</nav>
+
+		<div class="sidebar-footer">
+			<div class="user-info">
+				<div class="user-avatar">{user?.teamName.charAt(0).toUpperCase() || 'A'}</div>
+				<div class="user-details">
+					<span class="user-name">{user?.teamName || 'Admin'}</span>
+					<span class="user-role">Administrator</span>
+				</div>
 			</div>
-			<button class="admin-btn danger" onclick={logout}>
-				<LogOut size={14} />
-				Exit
+			<button class="logout-btn" onclick={logout} title="Logout">
+				<LogOut size={18} />
 			</button>
 		</div>
-	</div>
+	</aside>
 
-	<div class="admin-content">
-		<!-- Top Analytics Row -->
-		<div class="admin-metrics-section">
-			<div class="metrics-row">
-				<div class="stat-card">
-					<div class="stat-card-header">
-						<div class="stat-icon neutral"><Users size={16} /></div>
-						<span class="stat-label">Total Teams Navigating</span>
-					</div>
-					<div class="stat-body">
-						<span class="stat-value">{teams.length}</span>
-					</div>
-					<div class="stat-bar">
-						<div
-							class="stat-bar-fill neutral"
-							style="width: 100%; background: rgba(255,255,255,0.1)"
-						/>
-					</div>
+	<!-- Main Content Area -->
+	<main class="admin-main-content">
+		{#if activeTab === 'dashboard'}
+			<div class="content-section">
+				<div class="section-header">
+					<h1>Dashboard</h1>
+					<p class="section-description">Welcome to your admin dashboard</p>
 				</div>
-
-				<div class="stat-card">
-					<div class="stat-card-header">
-						<div class="stat-icon online"><Zap size={16} /></div>
-						<span class="stat-label">Currently Online</span>
-					</div>
-					<div class="stat-body">
-						<span class="stat-value online">{onlineCount}</span>
-					</div>
-					<div class="stat-bar">
-						<div class="stat-bar-fill online" style="width: {onlinePercent}%" />
-					</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-card-header">
-						<div class="stat-icon offline"><XCircle size={16} /></div>
-						<span class="stat-label">Offline / Disconnected</span>
-					</div>
-					<div class="stat-body">
-						<span class="stat-value offline">{offlineCount}</span>
-					</div>
-					<div class="stat-bar">
-						<div
-							class="stat-bar-fill offline"
-							style="width: {teams.length ? (offlineCount / teams.length) * 100 : 0}%"
-						/>
-					</div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-card-header">
-						<div class="stat-icon accent"><Activity size={16} /></div>
-						<span class="stat-label">Total Events Caught</span>
-					</div>
-					<div class="stat-body">
-						<span class="stat-value accent">{globalInsights.totalLogs}</span>
-					</div>
-					<div class="stat-bar">
-						<div class="stat-bar-fill" style="width: 100%; background: var(--accent)" />
+				<div class="dashboard-blank">
+					<div class="blank-state">
+						<LayoutDashboard size={48} style="opacity: 0.3;" />
+						<p>Dashboard content coming soon...</p>
 					</div>
 				</div>
 			</div>
-		</div>
-
-		<!-- Global Action Insights -->
-		<div class="admin-insights-row">
-			<div class="insight-card">
-				<div class="insight-card-header">
-					<div class="insight-title"><Monitor size={16} /> Top Distracting Apps Detected</div>
-					<span class="insight-stat-pill">Platform Wide</span>
+		{:else if activeTab === 'hackathons'}
+			<div class="content-section hackathons-section">
+				<div class="section-header">
+					<h1>Hackathons</h1>
+					<p class="section-description">Manage your hackathon events</p>
 				</div>
-				{#if globalInsights.topApps.length > 0}
-					<div class="top-apps-list">
-						{#each globalInsights.topApps as [app, count], idx}
-							{@const isFlagged =
-								app.toLowerCase().includes('discord') ||
-								app.toLowerCase().includes('youtube') ||
-								app.toLowerCase().includes('whatsapp')}
-							{@const maxCount = globalInsights.topApps[0][1]}
-							{@const pct = Math.round((count / maxCount) * 100)}
-							<div class="top-app-item">
-								<div class="top-app-header">
-									<span class="top-app-name" class:flagged={isFlagged}>{app}</span>
-									<span class="top-app-count">{count} switches</span>
+
+				{#if hackathons.length === 0}
+					<div class="hackathons-empty-state">
+						<div class="empty-state-card">
+							<MapPin size={64} style="opacity: 0.2;" />
+							<h2>No hackathons yet</h2>
+							<p>Create your first hackathon to get started with organizing events</p>
+							<button class="create-hackathon-btn primary" onclick={() => (showCreateDrawer = true)}>
+								<Plus size={20} />
+								Create Your First Hackathon
+							</button>
+						</div>
+					</div>
+				{:else}
+					<div class="hackathons-header">
+						<button class="create-hackathon-btn" onclick={() => (showCreateDrawer = true)}>
+							<Plus size={20} />
+							Create New Hackathon
+						</button>
+					</div>
+
+					<div class="hackathons-grid">
+						{#each hackathons as hackathon}
+							<div class="hackathon-card">
+								<div class="hackathon-card-header">
+									<h3>{hackathon.name}</h3>
+									<span class="status-badge {hackathon.status}">{hackathon.status}</span>
 								</div>
-								<div class="top-app-bar">
-									<div
-										class="top-app-bar-fill"
-										class:non-ide={isFlagged}
-										style="width: {pct}%; background: {isFlagged
-											? '#f59e0b'
-											: 'rgba(255,255,255,0.2)'}"
-									/>
+								<div class="hackathon-card-body">
+									{#if hackathon.dateTime}
+										<div class="hackathon-info">
+											<Calendar size={16} />
+											<span>{new Date(hackathon.dateTime).toLocaleString()}</span>
+										</div>
+									{/if}
+									{#if hackathon.duration}
+										<div class="hackathon-info">
+											<MapPin size={16} />
+											<span>Duration: {hackathon.duration}</span>
+										</div>
+									{/if}
+									<div class="hackathon-info">
+										<Users size={16} />
+										<span>
+											{hackathon.participants} / {hackathon.maxParticipants || 'Unlimited'}
+											participants
+										</span>
+									</div>
+								</div>
+								<div class="hackathon-card-footer">
+									<button class="hackathon-action-btn">View Details</button>
+									<button class="hackathon-action-btn secondary">Edit</button>
 								</div>
 							</div>
 						{/each}
 					</div>
-				{:else}
-					<div class="insight-empty">
-						<span style="opacity: 0.5">No off-IDE app switches detected yet</span>
-					</div>
 				{/if}
+
+				<!-- Create Hackathon Drawer -->
+				<CreateHackathonDrawer
+					bind:isOpen={showCreateDrawer}
+					onClose={() => (showCreateDrawer = false)}
+					onSave={handleSaveHackathon}
+				/>
 			</div>
-		</div>
+		{:else if activeTab === 'settings'}
+			<div class="content-section settings-section">
+				<div class="section-header">
+					<h1>Settings</h1>
+					<p class="section-description">Configure your admin account and global hackathon settings</p>
+				</div>
 
-		<!-- Sticky Toolbar -->
-		<div class="admin-controls-bar">
-			<div class="controls-left">
-				<div class="search-wrapper">
-					<Search class="search-icon" size={16} />
-					<input
-						type="text"
-						placeholder="Search candidates..."
-						class="admin-search-input"
-						bind:value={search}
-					/>
-				</div>
-				<div class="filter-group">
-					<button
-						class="filter-btn"
-						class:active={statusFilter === 'all'}
-						onclick={() => (statusFilter = 'all')}
-					>
-						All <span class="filter-badge">{teams.length}</span>
-					</button>
-					<button
-						class="filter-btn"
-						class:active={statusFilter === 'online'}
-						onclick={() => (statusFilter = 'online')}
-					>
-						Online <span class="filter-badge">{onlineCount}</span>
-					</button>
-					<button
-						class="filter-btn"
-						class:active={statusFilter === 'offline'}
-						onclick={() => (statusFilter = 'offline')}
-					>
-						Offline <span class="filter-badge">{offlineCount}</span>
-					</button>
-				</div>
-			</div>
-			<div class="controls-right">
-				<div class="view-toggle">
-					<button
-						class="view-btn"
-						class:active={viewMode === 'table'}
-						onclick={() => (viewMode = 'table')}
-						title="List View"
-					>
-						<List size={16} />
-					</button>
-					<button
-						class="view-btn"
-						class:active={viewMode === 'grid'}
-						onclick={() => (viewMode = 'grid')}
-						title="Grid View"
-					>
-						<LayoutGrid size={16} />
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<!-- Dynamic Display Area -->
-		<div class="admin-content-area">
-			{#if loading}
-				<div class="state-container">
-					<RefreshCw class="anim-spin spinner-glow" size={32} />
-					<span>Syncing telemetry stream...</span>
-				</div>
-			{:else if filteredTeams.length === 0}
-				<div class="state-container">
-					<ShieldAlert size={32} style="opacity: 0.3" />
-					<span>No candidates match parameters.</span>
-				</div>
-			{:else if viewMode === 'table'}
-				<!-- Table View -->
-				<div class="glass-panel">
-					<table class="modern-table">
-						<thead>
-							<tr>
-								<th class="th-sortable" onclick={() => handleSort('teamName')}>
-									<div class="th-content">
-										Candidate {sortKey === 'teamName' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-									</div>
-								</th>
-								<th class="th-sortable" onclick={() => handleSort('status')}>
-									<div class="th-content">
-										Status {sortKey === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-									</div>
-								</th>
-								<th>Engagement Metrics</th>
-								<th class="th-sortable" onclick={() => handleSort('lastSeen')}>
-									<div class="th-content">
-										Ping {sortKey === 'lastSeen' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-									</div>
-								</th>
-								<th class="th-actions">Generate</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each filteredTeams as team (team.teamId)}
-								{@const metrics = teamMetrics.get(team.teamId)}
-								{@const riskLevel =
-									metrics && metrics.appBlurCount > 10
-										? 'high'
-										: metrics && metrics.appBlurCount > 3
-											? 'medium'
-											: 'low'}
-								<tr class="team-row {team.status}">
-									<td>
-										<div class="team-identity">
-											<div class="team-avatar">{team.teamName.charAt(0).toUpperCase()}</div>
-											<div class="team-info">
-												<span class="team-name">{team.teamName}</span>
-												<span class="team-window" title={team.currentWindow || 'Idle'}>
-													{team.currentWindow || 'Awaiting window context'}
-												</span>
-											</div>
-										</div>
-									</td>
-									<td>
-										<div class="status-indicator {team.status}">
-											<span class="pulse-disc" />
-											{team.status === 'online' ? 'Active' : 'Disconnected'}
-										</div>
-									</td>
-									<td>
-										{#if metrics}
-											<div class="metrics-cluster">
-												<span
-													class="metric-chip {metrics.appBlurCount > 0 ? 'warn' : 'clean'}"
-													title="App Switches"
-												>
-													<Monitor size={12} />
-													{metrics.appBlurCount}
-												</span>
-												<span class="metric-chip neutral" title="Total Events">
-													<Activity size={12} />
-													{metrics.totalEvents}
-												</span>
-												<span class="risk-badge {riskLevel}">
-													{riskLevel === 'high'
-														? 'High Risk'
-														: riskLevel === 'medium'
-															? 'Review'
-															: 'Secure'}
-												</span>
-											</div>
-										{:else}
-											<span class="metric-chip clean">Assimilating...</span>
-										{/if}
-									</td>
-									<td>
-										<div class="time-display">
-											<Clock size={12} />
-											{formatTime(team.lastSeen)}
-										</div>
-									</td>
-									<td class="td-actions">
-										<button class="action-btn" onclick={() => handleOpenReport(team)}>
-											<BarChart2 size={13} />
-											Report
-										</button>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{:else}
-				<!-- Grid View -->
-				<div class="modern-grid">
-					{#each filteredTeams as team (team.teamId)}
-						{@const metrics = teamMetrics.get(team.teamId)}
-						<div class="grid-card {team.status}">
-							<div class="grid-card-glow" />
-							<div class="gc-header">
-								<div class="gc-avatar">{team.teamName.charAt(0).toUpperCase()}</div>
-								<div class="gc-title">
-									<h4>{team.teamName}</h4>
-									<div class="status-sm {team.status}">
-										<span class="dot" />
-										{team.status}
-									</div>
-								</div>
-							</div>
-
-							<div class="gc-body">
-								<div class="gc-stat-row">
-									<span class="gc-label">Active Window</span>
-									<span class="gc-val truncate" title={team.currentWindow || 'N/A'}>
-										{team.currentWindow || 'N/A'}
-									</span>
-								</div>
-								<div class="gc-stat-row">
-									<span class="gc-label">Active File</span>
-									<span class="gc-val truncate" title={team.currentFile || 'N/A'}>
-										{team.currentFile || 'N/A'}
-									</span>
-								</div>
-								{#if metrics}
-									<div class="gc-stat-row mt-4">
-										<span class="gc-label">Away / Focus Loss</span>
-										<span class="gc-val {metrics.appBlurCount > 3 ? 'warn' : ''}">
-											{metrics.appBlurCount} events
-										</span>
-									</div>
-								{/if}
-							</div>
-
-							<div class="gc-footer">
-								<span class="gc-time"><Clock size={12} /> {formatTime(team.lastSeen)}</span>
-								<button class="gc-btn" onclick={() => handleOpenReport(team)}>Report</button>
-							</div>
+				<div class="settings-container">
+					<div class="settings-searchbar-container">
+						<div class="search-input-wrapper">
+							<Search size={16} class="search-icon" />
+							<input
+								type="text"
+								placeholder="Search settings"
+								bind:value={searchQuery}
+								class="settings-search-input"
+							/>
+							{#if searchQuery}
+								<button class="clear-search" onclick={() => (searchQuery = '')}>
+									<X size={14} />
+								</button>
+							{/if}
 						</div>
-					{/each}
+					</div>
+
+					<div class="settings-body">
+						<div class="settings-sidebar">
+							<ul class="settings-tree">
+								<li
+									class:active={settingsActiveTab === 'Account'}
+									role="button"
+									tabindex="0"
+									onclick={() => {
+										settingsActiveTab = 'Account';
+										searchQuery = '';
+									}}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											settingsActiveTab = 'Account';
+											searchQuery = '';
+										}
+									}}
+								>
+									Account
+								</li>
+								<li
+									class:active={settingsActiveTab === 'Activity Logs'}
+									role="button"
+									tabindex="0"
+									onclick={() => {
+										settingsActiveTab = 'Activity Logs';
+										searchQuery = '';
+									}}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											settingsActiveTab = 'Activity Logs';
+											searchQuery = '';
+										}
+									}}
+								>
+									Activity Logs
+								</li>
+								<li
+									class:active={settingsActiveTab === 'Privacy'}
+									role="button"
+									tabindex="0"
+									onclick={() => {
+										settingsActiveTab = 'Privacy';
+										searchQuery = '';
+									}}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											settingsActiveTab = 'Privacy';
+											searchQuery = '';
+										}
+									}}
+								>
+									Privacy
+								</li>
+								<li
+									class:active={settingsActiveTab === 'Appearance'}
+									role="button"
+									tabindex="0"
+									onclick={() => {
+										settingsActiveTab = 'Appearance';
+										searchQuery = '';
+									}}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											settingsActiveTab = 'Appearance';
+											searchQuery = '';
+										}
+									}}
+								>
+									Appearance
+								</li>
+							</ul>
+						</div>
+
+						<div class="settings-content">
+							{#if showAppearance}
+								<div class="settings-section-inner">
+									<h2 class="settings-section-title">Appearance</h2>
+
+									{#if isSearching ? matchesSearch('Color Theme') || matchesSearch('interface theme') || matchesSearch('Appearance') : true}
+										<div class="setting-item">
+											<div class="setting-header">
+												<span class="setting-title">
+													Workbench: <span class="highlight">Color Theme</span>
+												</span>
+												<div class="setting-description">
+													Select your interface theme or let it match your system.
+												</div>
+											</div>
+											<div class="setting-control">
+												<select
+													class="setting-select"
+													value={theme}
+													onchange={(e) => {
+														theme = e.currentTarget.value;
+													}}
+												>
+													<option value="system">System Default</option>
+													<option value="light">Light Theme</option>
+													<option value="dark">Dark Theme</option>
+												</select>
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/if}
+
+							{#if showActivityLogs}
+								<div class="settings-section-inner">
+									<h2 class="settings-section-title">Activity Logs</h2>
+
+									<div class="account-card">
+										<div class="account-members-section">
+											<div class="account-members-header">
+												<span class="setting-title"
+													><span class="highlight">Flush Activity Logs</span></span
+												>
+											</div>
+											<div class="setting-description">
+												Clear all activity log data for every team from the database and reset
+												their local logs. New logs will be recorded from this point forward.
+											</div>
+
+											<div class="admin-password-form">
+												<button
+													class="activity-log-btn danger"
+													onclick={handleFlushLogs}
+													disabled={flushing}
+													style="align-self: flex-start; margin-top: 4px"
+												>
+													<Trash2 size={14} />
+													{flushing ? 'Flushing...' : 'Flush Logs'}
+												</button>
+											</div>
+											{#if flushError}<div class="account-error">{flushError}</div>{/if}
+											{#if flushSuccess}<div class="account-success">
+													<CheckCircle2 size={12} />
+													{flushSuccess}
+												</div>{/if}
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							{#if showPrivacy}
+								<div class="settings-section-inner">
+									<h2 class="settings-section-title">Privacy</h2>
+
+									<div class="account-card">
+										<div class="account-members-section">
+											<div class="account-members-header">
+												<span class="setting-title"
+													><span class="highlight">Internet Restriction</span></span
+												>
+											</div>
+											<div class="setting-description">
+												Control internet access restrictions for all non-admin teams.
+											</div>
+
+											<div class="admin-password-form">
+												<div class="setting-item" style="padding: 0; border: none">
+													<div class="setting-header">
+														<span class="setting-title" style="font-size: 13px; color: #d4d4d4"
+															>Block Internet Access</span
+														>
+														<div class="setting-description">
+															If enabled, non-admin teams will be restricted from using the IDE
+															while connected to the internet.
+														</div>
+													</div>
+													<div class="setting-control">
+														<label class="checkbox-label">
+															<input
+																type="checkbox"
+																class="checkbox-input"
+																checked={globalRestriction}
+																onchange={(e) => handleToggleRestriction(e.currentTarget.checked)}
+																disabled={savingRestriction}
+															/>
+														</label>
+													</div>
+												</div>
+											</div>
+											{#if restrictionError}<div class="account-error">{restrictionError}</div
+												>{/if}
+											{#if restrictionSuccess}<div class="account-success">
+													<CheckCircle2 size={12} />
+													{restrictionSuccess}
+												</div>{/if}
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							{#if showAccount}
+								<div class="settings-section-inner">
+									<h2 class="settings-section-title">Account</h2>
+
+									<div class="account-card">
+										<!-- Team Name -->
+										<div class="account-members-section">
+											<div class="account-members-header">
+												<span class="setting-title"><span class="highlight">Team Name</span></span>
+											</div>
+
+											{#if !editingName}
+												<div class="account-team-name" style="justify-content: space-between">
+													<div style="display: flex; align-items: center; gap: 10px">
+														<Users size={16} />
+														<span>{user?.teamName || 'Admin'}</span>
+													</div>
+													<button
+														class="activity-log-btn secondary"
+														onclick={() => {
+															editingName = true;
+															newTeamName = user?.teamName || '';
+															nameError = '';
+															nameSuccess = '';
+														}}
+													>
+														Edit
+													</button>
+												</div>
+											{:else}
+												<div class="account-add-member">
+													<input
+														type="text"
+														class="settings-search-input account-member-input"
+														placeholder="Enter new team name"
+														bind:value={newTeamName}
+														oninput={() => {
+															nameError = '';
+														}}
+														onkeydown={(e) => {
+															if (e.key === 'Enter') handleSaveName();
+														}}
+													/>
+													<button
+														class="activity-log-btn primary"
+														onclick={handleSaveName}
+														disabled={savingName}
+													>
+														{savingName ? 'Saving...' : 'Save'}
+													</button>
+													<button
+														class="activity-log-btn secondary"
+														onclick={() => {
+															editingName = false;
+															nameError = '';
+														}}
+													>
+														Cancel
+													</button>
+												</div>
+											{/if}
+											{#if nameError}<div class="account-error">{nameError}</div>{/if}
+											{#if nameSuccess}<div class="account-success">
+													<CheckCircle2 size={12} />
+													{nameSuccess}
+												</div>{/if}
+										</div>
+
+										<!-- Change Password -->
+										<div class="account-members-section">
+											<div class="account-members-header">
+												<span class="setting-title"
+													><span class="highlight">Change Password</span></span
+												>
+											</div>
+											<div class="setting-description">Update your admin account password.</div>
+
+											<div class="admin-password-form">
+												<div class="admin-password-field">
+													<label class="admin-password-label" for="old-pwd">Current Password</label>
+													<div class="admin-password-input-wrap">
+														<input
+															id="old-pwd"
+															type={showOldPassword ? 'text' : 'password'}
+															class="settings-search-input admin-password-input"
+															placeholder="Enter current password"
+															bind:value={oldPassword}
+															oninput={() => {
+																passwordError = '';
+															}}
+														/>
+														<button
+															type="button"
+															class="admin-password-eye"
+															onclick={() => {
+																showOldPassword = !showOldPassword;
+															}}
+														>
+															{#if showOldPassword}<EyeOff size={14} />{:else}<Eye
+																	size={14}
+																/>{/if}
+														</button>
+													</div>
+												</div>
+												<div class="admin-password-field">
+													<label class="admin-password-label" for="new-pwd">New Password</label>
+													<div class="admin-password-input-wrap">
+														<input
+															id="new-pwd"
+															type={showNewPassword ? 'text' : 'password'}
+															class="settings-search-input admin-password-input"
+															placeholder="Enter new password"
+															bind:value={newPassword}
+															oninput={() => {
+																passwordError = '';
+															}}
+														/>
+														<button
+															type="button"
+															class="admin-password-eye"
+															onclick={() => {
+																showNewPassword = !showNewPassword;
+															}}
+														>
+															{#if showNewPassword}<EyeOff size={14} />{:else}<Eye
+																	size={14}
+																/>{/if}
+														</button>
+													</div>
+												</div>
+												<div class="admin-password-field">
+													<label class="admin-password-label" for="confirm-pwd">Confirm New Password</label>
+													<div class="admin-password-input-wrap">
+														<input
+															id="confirm-pwd"
+															type={showConfirmPassword ? 'text' : 'password'}
+															class="settings-search-input admin-password-input"
+															placeholder="Confirm new password"
+															bind:value={confirmPassword}
+															oninput={() => {
+																passwordError = '';
+															}}
+															onkeydown={(e) => {
+																if (e.key === 'Enter') handleChangePassword();
+															}}
+														/>
+														<button
+															type="button"
+															class="admin-password-eye"
+															onclick={() => {
+																showConfirmPassword = !showConfirmPassword;
+															}}
+														>
+															{#if showConfirmPassword}<EyeOff size={14} />{:else}<Eye
+																	size={14}
+																/>{/if}
+														</button>
+													</div>
+												</div>
+												<button
+													class="activity-log-btn primary"
+													onclick={handleChangePassword}
+													disabled={savingPassword}
+													style="align-self: flex-start; margin-top: 4px"
+												>
+													<Key size={14} />
+													{savingPassword ? 'Updating...' : 'Update Password'}
+												</button>
+											</div>
+											{#if passwordError}<div class="account-error">{passwordError}</div>{/if}
+											{#if passwordSuccess}<div class="account-success">
+													<CheckCircle2 size={12} />
+													{passwordSuccess}
+												</div>{/if}
+										</div>
+
+										<!-- Sign Out -->
+										<div class="account-signout">
+											<button class="activity-log-btn danger" onclick={logout}>
+												<LogOut size={14} />
+												Sign Out
+											</button>
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
+					</div>
 				</div>
-			{/if}
-		</div>
-	</div>
-
-	{#if showReport && selectedTeam}
-		<ReportModal
-			team={selectedTeam}
-			onClose={() => {
-				showReport = false;
-				selectedTeam = null;
-			}}
-		/>
-	{/if}
-
-	{#if showSettings && user}
-		<AdminSettingsModal
-			isOpen={showSettings}
-			onClose={() => (showSettings = false)}
-			{user}
-			onLogout={logout}
-			{theme}
-			onThemeChange={(val) => (theme = val)}
-			onTeamNameUpdated={handleTeamNameUpdated}
-		/>
-	{/if}
+			</div>
+		{/if}
+	</main>
 </div>
 
 <style>
-	@import './AdminDashboard.css';
+	@import './AdminPanel.css';
 </style>
