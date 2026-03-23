@@ -4,6 +4,7 @@
 
   let isLogin = $state(true);
   let rememberMe = $state(false);
+  let acceptTerms = $state(false);
   let accountType = $state("individual"); // 'individual' | 'organization'
   let showPassword = $state(false);
 
@@ -212,11 +213,42 @@
               </a>
             </div>
           {:else}
-            <div class="mt-4 px-1">
-              <p class="text-[11px] leading-relaxed text-center text-zinc-500 dark:text-zinc-400">
-                By signing up, you agree to our 
-                <a href="/terms" class="font-bold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 underline decoration-cyan-500/30 underline-offset-2">Terms & Conditions</a> and <a href="/privacy" class="font-bold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 underline decoration-cyan-500/30 underline-offset-2 whitespace-nowrap">Privacy Policy</a>.
-              </p>
+            <div class="mt-4 px-1 text-left">
+              <label class="flex cursor-pointer items-start group">
+                <div class="relative flex-none mt-0.5">
+                  <input
+                    type="checkbox"
+                    bind:checked={acceptTerms}
+                    class="peer sr-only"
+                  />
+                  <!-- Custom Checkbox (Same style as login) -->
+                  <div class="h-4.5 w-4.5 rounded border-2 border-zinc-300 bg-white transition-all duration-200 
+                    peer-checked:border-cyan-500 peer-checked:bg-cyan-500
+                    group-hover:border-cyan-400
+                    dark:border-white/20 dark:bg-transparent dark:peer-checked:bg-cyan-500">
+                    <!-- Animated Checkmark (Write Symbol) -->
+                    <svg 
+                      class="h-3.5 w-3.5 text-white transition-all duration-300 ease-out"
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      stroke-width="4" 
+                      stroke-linecap="round" 
+                      stroke-linejoin="round"
+                    >
+                      <polyline 
+                        points="20 6 9 17 4 12" 
+                        class="transition-all duration-500 ease-in-out"
+                        style="stroke-dasharray: 22; stroke-dashoffset: {acceptTerms ? '0' : '22'}; opacity: {acceptTerms ? '1' : '0'};"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <span class="ml-3 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+                  I accept the 
+                  <a href="/terms" class="font-bold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 underline decoration-cyan-500/30 underline-offset-2">Terms & Conditions</a> and <a href="/privacy" class="font-bold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 underline decoration-cyan-500/30 underline-offset-2 whitespace-nowrap">Privacy Policy</a>
+                </span>
+              </label>
             </div>
           {/if}
 
