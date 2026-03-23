@@ -19,21 +19,21 @@
 </script>
 
 <section
-  class="relative w-full pt-4 sm:pt-6 pb-20 sm:pb-24 px-4 sm:px-6"
+  class="relative flex min-h-[calc(100vh-80px)] w-full items-center justify-center px-4 py-12 sm:px-6"
 >
   <div class="relative z-10 w-full max-w-md mx-auto">
     <div
-      class="mx-auto w-full overflow-hidden rounded-3xl border border-zinc-200/80 bg-white/65 shadow-xl shadow-zinc-900/5 backdrop-blur-xl transition-colors duration-200 dark:border-white/8 dark:bg-[#0d1520]/72 dark:shadow-black/30"
+      class="mx-auto w-full overflow-hidden rounded-[2.5rem] border border-zinc-200/80 bg-white shadow-2xl shadow-zinc-900/5 backdrop-blur-xl transition-all duration-300 hover:shadow-cyan-500/5 dark:border-white/8 dark:bg-[#0d1520]/80 dark:shadow-black/30"
     >
-      <div class="w-full p-8 sm:p-10">
-        <div class="mb-8 flex flex-col items-center">
-          <h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {isLogin ? "Login" : "Create Account"}
+      <div class="w-full p-8 sm:p-12">
+        <div class="mb-10 flex flex-col items-center">
+          <h1 class="text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100">
+            {isLogin ? "Welcome back" : "Get started"}
           </h1>
-          <p class="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
+          <p class="mt-3 text-center text-sm font-medium text-zinc-500 dark:text-zinc-400">
             {isLogin
-              ? "Use email/password or continue with a provider."
-              : "Choose your account type and fill the required details."}
+              ? "Sign in to your account to continue"
+              : "Launch your next project with Sonar IDE"}
           </p>
         </div>
 
