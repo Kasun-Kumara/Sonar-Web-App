@@ -14,6 +14,8 @@
       ? "text-cyan-700 dark:text-cyan-200 cursor-pointer"
       : "text-zinc-700 dark:text-zinc-100/82 hover:text-cyan-700 dark:hover:text-cyan-200 cursor-pointer";
 
+  const isAuthPage = $derived(page.url.pathname === "/login");
+
   let isMobileMenuOpen = $state(false);
 
   function toggleMobileMenu() {
@@ -64,7 +66,7 @@
 
   <header class="fixed top-0 z-100 w-full px-4 pt-3 sm:px-6">
     <div
-      class="header-shell relative mx-auto w-full max-w-300 rounded-2xl border border-cyan-400/30 dark:border-cyan-400/20 bg-[#e9f3ff]/78 dark:bg-[#040a16]/94 shadow-[0_18px_46px_-24px_rgba(3,40,58,0.45)] dark:shadow-[0_18px_46px_-24px_rgba(2,12,27,0.9)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-200"
+      class="relative mx-auto w-full max-w-300 rounded-2xl transition-[background-color,border-color,box-shadow,backdrop-filter] duration-200 {isAuthPage ? 'bg-transparent border-none shadow-none backdrop-blur-none' : 'header-shell border border-cyan-400/30 dark:border-cyan-400/20 bg-[#e9f3ff]/78 dark:bg-[#040a16]/94 shadow-[0_18px_46px_-24px_rgba(3,40,58,0.45)] dark:shadow-[0_18px_46px_-24px_rgba(2,12,27,0.9)] backdrop-blur-xl'}"
     >
       <div class="relative flex h-16 items-center justify-between px-4 sm:px-6">
         <a href="/" class="flex items-center space-x-3 text-xl font-bold">
@@ -83,6 +85,7 @@
           >
         </a>
 
+        {#if !isAuthPage}
         <nav class="hidden md:flex items-center gap-6 text-sm font-semibold">
           <a
             href="/"
@@ -121,9 +124,11 @@
             ></span>
           </a>
         </nav>
+        {/if}
 
         <div class="flex items-center space-x-2 sm:space-x-3">
           <div class="hidden md:flex items-center space-x-2 sm:space-x-3">
+            {#if !isAuthPage}
             <ThemeToggle />
             <a
               href="https://github.com/rkvishwa/Sonar-Code-Editor"
@@ -151,7 +156,9 @@
                 <span>Login</span>
               </span>
             </a>
+            {/if}
           </div>
+          {#if !isAuthPage}
           <button
             onclick={toggleMobileMenu}
             class="md:hidden inline-flex items-center justify-center rounded-xl border border-cyan-400/38 dark:border-cyan-300/35 bg-white/74 dark:bg-cyan-500/12 p-2 text-cyan-700 dark:text-cyan-100 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 transition-colors cursor-pointer"
@@ -163,6 +170,7 @@
               <Menu size={18} />
             {/if}
           </button>
+          {/if}
         </div>
       </div>
 
@@ -175,6 +183,7 @@
             <a href="/contact" class={navLinkClass("/contact")}>Contact Us</a>
           </nav>
           <div class="flex items-center gap-3 pt-4 border-t border-cyan-400/20">
+            {#if !isAuthPage}
             <ThemeToggle />
             <a
               href="https://github.com/rkvishwa/Sonar-Code-Editor"
@@ -198,6 +207,7 @@
             >
               <span>Login</span>
             </a>
+            {/if}
           </div>
         </div>
       {/if}
@@ -212,6 +222,7 @@
     {/key}
   </main>
 
+  {#if !isAuthPage}
   <footer
     class="relative z-10 mt-auto border-t border-zinc-200/70 dark:border-white/8 pt-16 pb-8 bg-white/60 dark:bg-[#0d1520]/72 text-zinc-500 dark:text-zinc-400 backdrop-blur-xl transition-colors duration-200"
   >
@@ -377,5 +388,6 @@
       </div>
     </div>
   </footer>
+  {/if}
 </div>
 {/if}

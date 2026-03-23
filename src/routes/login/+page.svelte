@@ -19,7 +19,7 @@
 </script>
 
 <section
-  class="relative w-full pt-8 mt-4 sm:pt-12 sm:mt-6 pb-20 sm:pb-24 px-4 sm:px-6"
+  class="relative w-full pt-4 sm:pt-6 pb-20 sm:pb-24 px-4 sm:px-6"
 >
   <div class="relative z-10 w-full max-w-md mx-auto">
     <div
@@ -27,10 +27,6 @@
     >
       <div class="w-full p-8 sm:p-10">
         <div class="mb-8 flex flex-col items-center">
-          <div class="mb-4">
-            <img src="/favicon.png" alt="Sonar icon" class="h-12 w-12 object-contain" />
-          </div>
-
           <h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             {isLogin ? "Login" : "Create Account"}
           </h1>
@@ -174,7 +170,14 @@
           {/if}
 
           {#if isLogin}
-            <div class="flex justify-end">
+            <div class="flex items-center justify-between">
+              <label class="flex cursor-pointer items-center space-x-2">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-zinc-300 accent-cyan-500 text-cyan-500 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-transparent"
+                />
+                <span class="text-xs font-medium text-zinc-600 dark:text-zinc-400">Remember me</span>
+              </label>
               <a
                 href="/forgot-password"
                 class="text-xs font-medium text-cyan-600 hover:text-cyan-500 dark:text-cyan-400"
@@ -191,10 +194,6 @@
             {isLogin ? "Login" : "Create Account"}
           </button>
         </form>
-
-        <p class="mt-6 text-center text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          For GitHub or Google sign-in, remaining profile details will be requested after provider authentication.
-        </p>
 
         <div class="mt-6 flex justify-center">
           <button
