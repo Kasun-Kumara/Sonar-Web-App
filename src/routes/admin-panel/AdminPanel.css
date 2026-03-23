@@ -158,6 +158,11 @@
 	position: relative;
 }
 
+.hackathons-section {
+	position: relative;
+	overflow: hidden;
+}
+
 .content-section {
 	padding: 32px;
 	max-width: 1400px;
@@ -489,21 +494,28 @@
 }
 
 .settings-tree li {
+	margin-bottom: 2px;
+}
+
+.settings-tree-item {
+	width: 100%;
+	text-align: left;
 	padding: 8px 12px;
 	cursor: pointer;
 	border-radius: 4px;
 	font-size: 13px;
-	margin-bottom: 2px;
 	color: #cccccc;
+	background: transparent;
+	border: none;
 	transition: all 0.2s ease;
 }
 
-.settings-tree li:hover {
+.settings-tree-item:hover {
 	background: #2a2d2e;
 	color: #ffffff;
 }
 
-.settings-tree li.active {
+.settings-tree-item.active {
 	background: #094771;
 	color: #ffffff;
 	font-weight: 500;

@@ -70,15 +70,38 @@
 				try {
 					user = JSON.parse(stored);
 				} catch {
-					user = { teamName: 'Admin', role: 'admin', $id: 'temp' } as Team;
+					// Auto-login with test credentials
+					user = {
+						teamName: 'Test Admin',
+						role: 'admin',
+						$id: 'test-admin-001',
+						email: 'admin@test.com'
+					} as Team;
+					localStorage.setItem('sonar_session', JSON.stringify(user));
 				}
 			} else {
-				user = { teamName: 'Admin', role: 'admin', $id: 'temp' } as Team;
+				// Auto-login with test credentials for development
+				user = {
+					teamName: 'Test Admin',
+					role: 'admin',
+					$id: 'test-admin-001',
+					email: 'admin@test.com'
+				} as Team;
+				localStorage.setItem('sonar_session', JSON.stringify(user));
 			}
 
 			const storedTheme = localStorage.getItem('ide-theme') || 'system';
 			theme = storedTheme;
 			applyTheme(storedTheme);
+
+			const storedHackathons = localStorage.getItem('sonar_hackathons');
+			if (storedHackathons) {
+				try {
+					hackathons = JSON.parse(storedHackathons);
+				} catch (e) {
+					console.error('Failed to load hackathons', e);
+				}
+			}
 		}
 	});
 
@@ -277,7 +300,11 @@
 	});
 
 	function handleSaveHackathon(hackathonData: any) {
-		hackathons = [...hackathons, hackathonData];
+		hackathons = [hackathonData, ...hackathons];
+		// Optional: Persist to local storage for demo purposes
+		if (browser) {
+			localStorage.setItem('sonar_hackathons', JSON.stringify(hackathons));
+		}
 	}
 </script>
 
@@ -450,73 +477,57 @@
 					<div class="settings-body">
 						<div class="settings-sidebar">
 							<ul class="settings-tree">
-								<li
-									class:active={settingsActiveTab === 'Account'}
-									role="button"
-									tabindex="0"
-									onclick={() => {
-										settingsActiveTab = 'Account';
-										searchQuery = '';
-									}}
-									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
+								<li>
+									<button
+										type="button"
+										class="settings-tree-item"
+										class:active={settingsActiveTab === 'Account'}
+										onclick={() => {
 											settingsActiveTab = 'Account';
 											searchQuery = '';
-										}
-									}}
-								>
-									Account
+										}}
+									>
+										Account
+									</button>
 								</li>
-								<li
-									class:active={settingsActiveTab === 'Activity Logs'}
-									role="button"
-									tabindex="0"
-									onclick={() => {
-										settingsActiveTab = 'Activity Logs';
-										searchQuery = '';
-									}}
-									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
+								<li>
+									<button
+										type="button"
+										class="settings-tree-item"
+										class:active={settingsActiveTab === 'Activity Logs'}
+										onclick={() => {
 											settingsActiveTab = 'Activity Logs';
 											searchQuery = '';
-										}
-									}}
-								>
-									Activity Logs
+										}}
+									>
+										Activity Logs
+									</button>
 								</li>
-								<li
-									class:active={settingsActiveTab === 'Privacy'}
-									role="button"
-									tabindex="0"
-									onclick={() => {
-										settingsActiveTab = 'Privacy';
-										searchQuery = '';
-									}}
-									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
+								<li>
+									<button
+										type="button"
+										class="settings-tree-item"
+										class:active={settingsActiveTab === 'Privacy'}
+										onclick={() => {
 											settingsActiveTab = 'Privacy';
 											searchQuery = '';
-										}
-									}}
-								>
-									Privacy
+										}}
+									>
+										Privacy
+									</button>
 								</li>
-								<li
-									class:active={settingsActiveTab === 'Appearance'}
-									role="button"
-									tabindex="0"
-									onclick={() => {
-										settingsActiveTab = 'Appearance';
-										searchQuery = '';
-									}}
-									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
+								<li>
+									<button
+										type="button"
+										class="settings-tree-item"
+										class:active={settingsActiveTab === 'Appearance'}
+										onclick={() => {
 											settingsActiveTab = 'Appearance';
 											searchQuery = '';
-										}
-									}}
-								>
-									Appearance
+										}}
+									>
+										Appearance
+									</button>
 								</li>
 							</ul>
 						</div>

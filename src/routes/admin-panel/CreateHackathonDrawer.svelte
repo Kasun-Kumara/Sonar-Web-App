@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { X, Calendar, Clock, Users, FileText, AlertCircle, Copy, Check } from 'lucide-svelte';
+	import { X, Calendar, Clock, Users, FileText, AlertCircle, Copy, Check, Info, Shield, HelpCircle } from 'lucide-svelte';
+	import { fly, fade } from 'svelte/transition';
 
 	interface Props {
 		isOpen: boolean;
@@ -9,22 +10,26 @@
 
 	let { isOpen = $bindable(), onClose, onSave }: Props = $props();
 
-	let isClosing = $state(false);
+	// Form State
 	let title = $state('');
 	let dateTime = $state('');
-	let duration = $state('');
+	let endDate = $state('');
+	let location = $state('');
 	let agenda = $state('');
 	let specialInstructions = $state('');
-	let maxParticipants = $state('');
+	let maxParticipants = $state<number | null>(null);
 	let isUnlimited = $state(true);
+	let status = $state<'draft' | 'published'>('draft');
 
+	// Auto-generated identifiers
 	let hackathonId = $state('');
 	let password = $state('');
 	let invitationLink = $state('');
+	
+	// UI State
 	let copiedId = $state(false);
 	let copiedPassword = $state(false);
 	let copiedLink = $state(false);
-
 	let titleError = $state('');
 	let saving = $state(false);
 
@@ -46,12 +51,14 @@
 	}
 
 	function generateInvitationLink(id: string, pwd: string): string {
+		if (typeof window === 'undefined') return '';
 		const baseUrl = window.location.origin;
 		return `${baseUrl}/join/${id}?pwd=${pwd}`;
 	}
 
+	// Re-generate credentials when opening a new one
 	$effect(() => {
-		if (isOpen) {
+		if (isOpen && !hackathonId) {
 			hackathonId = generateHackathonId();
 			password = generatePassword();
 			invitationLink = generateInvitationLink(hackathonId, password);
@@ -87,620 +94,755 @@
 			id: hackathonId,
 			name: title.trim(),
 			dateTime: dateTime || null,
-			duration: duration || null,
+			endDate: endDate || null,
+			location: location.trim() || 'Online',
 			agenda: agenda.trim() || null,
 			specialInstructions: specialInstructions.trim() || null,
-			maxParticipants: isUnlimited ? null : parseInt(maxParticipants) || null,
+			maxParticipants: isUnlimited ? null : maxParticipants,
 			password: password,
 			invitationLink: invitationLink,
-			status: 'draft',
+			status: status,
 			createdAt: new Date().toISOString(),
 			participants: 0
 		};
 
-		// Simulate save delay
+		// Adding a small delay for better UX
 		setTimeout(() => {
 			onSave(hackathonData);
 			saving = false;
-			handleClose();
-		}, 500);
+			closeDrawer();
+		}, 600);
 	}
 
 	function resetForm() {
 		title = '';
 		dateTime = '';
-		duration = '';
+		endDate = '';
+		location = '';
 		agenda = '';
 		specialInstructions = '';
-		maxParticipants = '';
+		maxParticipants = null;
 		isUnlimited = true;
+		status = 'draft';
+		hackathonId = '';
+		password = '';
+		invitationLink = '';
 		titleError = '';
-		copiedId = false;
-		copiedPassword = false;
-		copiedLink = false;
 	}
 
-	function handleClose() {
-		isClosing = true;
-		setTimeout(() => {
-			resetForm();
-			isClosing = false;
-			isOpen = false;
-			onClose();
-		}, 300); // Match animation duration
+	function closeDrawer() {
+		resetForm();
+		isOpen = false;
+		onClose();
 	}
 </script>
 
 {#if isOpen}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<!-- Overlay -->
 	<div
 		class="drawer-overlay"
-		class:closing={isClosing}
-		onclick={handleClose}
-		onkeydown={(e) => e.key === 'Escape' && handleClose()}
+		role="button"
+		tabindex="0"
+		transition:fade={{ duration: 200 }}
+		onclick={closeDrawer}
+		onkeydown={(e) => e.key === 'Escape' && closeDrawer()}
 	></div>
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="drawer-container" class:closing={isClosing} onclick={(e) => e.stopPropagation()}>
+
+	<!-- Drawer Container -->
+	<div
+		class="drawer-container"
+		role="dialog"
+		aria-labelledby="drawer-title"
+		transition:fly={{ y: 600, duration: 450, opacity: 1 }}
+	>
+		<!-- Header -->
 		<div class="drawer-header">
-			<div>
-				<h2>Create New Hackathon</h2>
-				<p>Fill in the details below to create your hackathon event</p>
+			<div class="header-info">
+				<h2 id="drawer-title">Create New Hackathon</h2>
+				<p>Plan and configure your next big event</p>
 			</div>
-			<button class="close-btn" onclick={handleClose}>
-				<X size={24} />
+			<button class="close-btn" onclick={closeDrawer} title="Close drawer">
+				<X size={20} />
 			</button>
 		</div>
 
+		<!-- Content -->
 		<div class="drawer-content">
-			<!-- Auto-generated Information -->
-			<div class="info-section">
-				<h3>Auto-Generated Information</h3>
-				<div class="info-grid">
-					<div class="info-item">
-						<label>Hackathon ID</label>
-						<div class="info-value">
-							<code>{hackathonId}</code>
-							<button
-								class="copy-btn"
-								onclick={() => copyToClipboard(hackathonId, 'id')}
-								title="Copy Hackathon ID"
-							>
-								{#if copiedId}
-									<Check size={16} />
-								{:else}
-									<Copy size={16} />
-								{/if}
-							</button>
-						</div>
-					</div>
-					<div class="info-item">
-						<label>Access Password</label>
-						<div class="info-value">
-							<code>{password}</code>
-							<button
-								class="copy-btn"
-								onclick={() => copyToClipboard(password, 'password')}
-								title="Copy Password"
-							>
-								{#if copiedPassword}
-									<Check size={16} />
-								{:else}
-									<Copy size={16} />
-								{/if}
-							</button>
-						</div>
+			<!-- Visual ID Banner -->
+			<div class="id-banner">
+				<div class="id-info">
+					<span class="id-label">AUTO-GENERATED ID</span>
+					<span class="id-value">{hackathonId}</span>
+				</div>
+				<button class="banner-copy-btn" onclick={() => copyToClipboard(hackathonId, 'id')}>
+					{#if copiedId}
+						<Check size={16} /> <span>Copied!</span>
+					{:else}
+						<Copy size={16} /> <span>Copy ID</span>
+					{/if}
+				</button>
+			</div>
+
+			<div class="section-divider">
+				<span class="divider-text">BASIC INFORMATION</span>
+			</div>
+
+			<div class="field-container">
+				<label for="h-title" class="field-label required">Event Title</label>
+				<div class="input-wrapper" class:has-error={titleError}>
+					<FileText size={18} class="input-icon" />
+					<input 
+						id="h-title" 
+						type="text" 
+						bind:value={title} 
+						placeholder="e.g. Winter AI Challenge 2026"
+						class="form-control"
+					/>
+				</div>
+				{#if titleError}
+					<span class="error-text"><AlertCircle size={12} /> {titleError}</span>
+				{/if}
+			</div>
+
+			<div class="field-grid">
+				<div class="field-container">
+					<label for="h-start" class="field-label">Start Date & Time</label>
+					<div class="input-wrapper">
+						<Calendar size={18} class="input-icon" />
+						<input 
+							id="h-start" 
+							type="datetime-local" 
+							bind:value={dateTime} 
+							class="form-control"
+						/>
 					</div>
 				</div>
-				<div class="info-item full-width">
-					<label>Invitation Link</label>
-					<div class="info-value">
-						<code class="invitation-link">{invitationLink}</code>
-						<button
-							class="copy-btn"
-							onclick={() => copyToClipboard(invitationLink, 'link')}
-							title="Copy Invitation Link"
-						>
-							{#if copiedLink}
-								<Check size={16} />
-							{:else}
-								<Copy size={16} />
-							{/if}
-						</button>
+				<div class="field-container">
+					<label for="h-end" class="field-label">End Date & Time</label>
+					<div class="input-wrapper">
+						<Calendar size={18} class="input-icon" />
+						<input 
+							id="h-end" 
+							type="datetime-local" 
+							bind:value={endDate} 
+							class="form-control"
+						/>
 					</div>
-					<p class="info-hint">
-						Share this link with participants. They can join without entering the password manually.
-					</p>
 				</div>
 			</div>
 
-			<!-- Form Fields -->
-			<div class="form-section">
-				<h3>Hackathon Details</h3>
-
-				<div class="form-group">
-					<label for="title" class="required">Hackathon Title</label>
-					<input
-						id="title"
-						type="text"
-						bind:value={title}
-						placeholder="Enter hackathon title"
-						class="form-input"
-						class:error={titleError}
+			<div class="field-container">
+				<label for="h-location" class="field-label">Event Location</label>
+				<div class="input-wrapper">
+					<Info size={18} class="input-icon" />
+					<input 
+						id="h-location" 
+						type="text" 
+						bind:value={location} 
+						placeholder="e.g. Online, Innovation Hub, San Francisco"
+						class="form-control"
 					/>
-					{#if titleError}
-						<div class="error-message">
-							<AlertCircle size={14} />
-							{titleError}
+				</div>
+			</div>
+
+			<div class="section-divider">
+				<span class="divider-text">ACCESS & LIMITS</span>
+			</div>
+
+			<div class="access-info-box">
+				<div class="access-field">
+					<div class="access-label-group">
+						<Shield size={16} class="label-icon" />
+						<span class="access-label">Access Password</span>
+					</div>
+					<div class="access-value-row">
+						<code>{password}</code>
+						<button class="icon-btn-tinted" onclick={() => copyToClipboard(password, 'password')}>
+							{#if copiedPassword}<Check size={14} />{:else}<Copy size={14} />{/if}
+						</button>
+					</div>
+				</div>
+				
+				<div class="access-field">
+					<div class="access-label-group">
+						<Users size={16} class="label-icon" />
+						<span class="access-label">Participant Limit</span>
+					</div>
+					<div class="limit-control-row">
+						<!-- Toggle Switch Container -->
+						<div class="toggle-container">
+							<button 
+								class="toggle-switch-btn" 
+								class:active={isUnlimited} 
+								onclick={() => isUnlimited = !isUnlimited}
+							>
+								<div class="toggle-dot"></div>
+							</button>
+							<span class="toggle-text">{isUnlimited ? 'Unlimited Capacity' : 'Limited Entry'}</span>
 						</div>
-					{/if}
-				</div>
-
-				<div class="form-row">
-					<div class="form-group">
-						<label for="dateTime">
-							<Calendar size={16} />
-							Date & Time (Optional)
-						</label>
-						<input
-							id="dateTime"
-							type="datetime-local"
-							bind:value={dateTime}
-							class="form-input"
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="duration">
-							<Clock size={16} />
-							Duration (Optional)
-						</label>
-						<input
-							id="duration"
-							type="text"
-							bind:value={duration}
-							placeholder="e.g., 24 hours, 3 days"
-							class="form-input"
-						/>
-					</div>
-				</div>
-
-				<div class="form-group">
-					<label for="agenda">
-						<FileText size={16} />
-						Agenda (Optional)
-					</label>
-					<textarea
-						id="agenda"
-						bind:value={agenda}
-						placeholder="Describe the hackathon agenda, schedule, or objectives..."
-						class="form-textarea"
-						rows="4"
-					></textarea>
-				</div>
-
-				<div class="form-group">
-					<label for="specialInstructions">
-						<AlertCircle size={16} />
-						Special Instructions (Optional)
-					</label>
-					<textarea
-						id="specialInstructions"
-						bind:value={specialInstructions}
-						placeholder="Any special instructions or rules for participants..."
-						class="form-textarea"
-						rows="3"
-					></textarea>
-				</div>
-
-				<div class="form-group">
-					<label for="maxParticipants">
-						<Users size={16} />
-						Maximum Participants
-					</label>
-					<div class="participants-control">
-						<label class="checkbox-wrapper">
-							<input type="checkbox" bind:checked={isUnlimited} class="checkbox" />
-							<span>Unlimited</span>
-						</label>
 						{#if !isUnlimited}
-							<input
-								id="maxParticipants"
-								type="number"
-								bind:value={maxParticipants}
-								placeholder="Enter max number"
-								class="form-input"
+							<input 
+								type="number" 
+								bind:value={maxParticipants} 
+								class="number-input" 
+								placeholder="Qty"
 								min="1"
 							/>
 						{/if}
 					</div>
 				</div>
 			</div>
+
+			<div class="field-container">
+				<label for="h-agenda" class="field-label">Agenda & Schedule</label>
+				<textarea 
+					id="h-agenda" 
+					bind:value={agenda} 
+					rows="4" 
+					placeholder="Outline the main events, milestones, and timeline..."
+					class="form-control-area"
+				></textarea>
+			</div>
+
+			<div class="field-container">
+				<label for="h-rules" class="field-label">Rules & Special Instructions</label>
+				<textarea 
+					id="h-rules" 
+					bind:value={specialInstructions} 
+					rows="3" 
+					placeholder="Safety guidelines, technical requirements, or competition rules..."
+					class="form-control-area"
+				></textarea>
+			</div>
+
+			<div class="footer-settings">
+				<div class="status-option">
+					<span class="field-label">Visibility Status</span>
+					<div class="radio-group">
+						<button 
+							class="radio-btn" 
+							class:active={status === 'draft'} 
+							onclick={() => status = 'draft'}
+						>
+							<div class="radio-dot"></div>
+							Draft
+						</button>
+						<button 
+							class="radio-btn" 
+							class:active={status === 'published'} 
+							onclick={() => status = 'published'}
+						>
+							<div class="radio-dot"></div>
+							Published
+						</button>
+					</div>
+				</div>
+			</div>
 		</div>
 
+		<!-- Footer -->
 		<div class="drawer-footer">
-			<button class="btn-secondary" onclick={handleClose} disabled={saving}>Cancel</button>
-			<button class="btn-primary" onclick={handleSave} disabled={saving}>
-				{saving ? 'Creating...' : 'Create Hackathon'}
+			<button class="footer-btn secondary" onclick={closeDrawer}>Discard Changes</button>
+			<button class="footer-btn primary" onclick={handleSave} disabled={saving}>
+				{#if saving}
+					<div class="spinner"></div> Creating...
+				{:else}
+					Initialize Hackathon
+				{/if}
 			</button>
 		</div>
 	</div>
 {/if}
 
 <style>
-	.drawer-overlay {
-		position: fixed;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		left: 260px; /* Match sidebar width to not cover it */
-		background: rgba(0, 0, 0, 0.6);
-		backdrop-filter: blur(4px);
-		z-index: 100;
-		animation: fadeIn 0.2s ease-out forwards;
+	:root {
+		--drawer-bg: #0f1115;
+		--drawer-header-bg: #16191f;
+		--input-bg: #1e2229;
+		--border-color: #2e343d;
+		--text-main: #e1e7ef;
+		--text-muted: #8b95a5;
+		--accent-color: #3b82f6;
+		--accent-hover: #2563eb;
+		--error-red: #ef4444;
 	}
 
-	.drawer-overlay.closing {
-		animation: fadeOut 0.3s ease-out forwards;
+	.drawer-overlay {
+		position: absolute;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.6);
+		backdrop-filter: blur(2px);
+		z-index: 999;
 	}
 
 	.drawer-container {
-		position: fixed;
-		bottom: 0;
-		left: 260px; /* Match sidebar width */
+		position: absolute;
+		left: 0;
 		right: 0;
-		background: #1e1e1e;
-		border-top: 1px solid #3e3e42;
-		border-radius: 16px 16px 0 0;
-		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
-		z-index: 101;
-		max-height: 90vh;
+		bottom: 0;
+		width: 100%;
+		height: 90%;
+		background: var(--drawer-bg);
 		display: flex;
 		flex-direction: column;
-		animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+		z-index: 1000;
+		box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+		border-top: 1px solid var(--border-color);
+		border-radius: 24px 24px 0 0;
+		overflow: hidden;
 	}
 
-	.drawer-container.closing {
-		animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes fadeOut {
-		from {
-			opacity: 1;
-		}
-		to {
-			opacity: 0;
-		}
-	}
-
-	@keyframes slideUp {
-		from {
-			transform: translateY(100%);
-		}
-		to {
-			transform: translateY(0);
-		}
-	}
-
-	@keyframes slideDown {
-		from {
-			transform: translateY(0);
-		}
-		to {
-			transform: translateY(100%);
-		}
-	}
-
-	/* Responsive - match sidebar width changes */
-	@media (max-width: 1024px) {
-		.drawer-overlay,
+	@media (max-width: 600px) {
 		.drawer-container {
-			left: 220px;
-		}
-	}
-
-	@media (max-width: 768px) {
-		.drawer-overlay,
-		.drawer-container {
-			left: 80px;
+			width: 100%;
 		}
 	}
 
 	.drawer-header {
 		padding: 24px 32px;
-		border-bottom: 1px solid #3e3e42;
+		background: var(--drawer-header-bg);
+		border-bottom: 1px solid var(--border-color);
 		display: flex;
 		justify-content: space-between;
-		align-items: flex-start;
+		align-items: center;
 	}
 
-	.drawer-header h2 {
-		font-size: 24px;
-		font-weight: 600;
-		margin: 0 0 4px 0;
-		color: #ffffff;
-	}
-
-	.drawer-header p {
-		font-size: 14px;
-		color: #888888;
+	.header-info h2 {
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: #fff;
 		margin: 0;
 	}
 
+	.header-info p {
+		font-size: 0.85rem;
+		color: var(--text-muted);
+		margin: 4px 0 0 0;
+	}
+
 	.close-btn {
-		background: transparent;
-		border: none;
-		color: #cccccc;
-		cursor: pointer;
-		padding: 4px;
-		border-radius: 6px;
-		transition: all 0.2s;
+		background: #232831;
+		border: 1px solid var(--border-color);
+		color: var(--text-muted);
+		width: 36px;
+		height: 36px;
+		border-radius: 8px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
 	}
 
 	.close-btn:hover {
-		background: #2a2d2e;
-		color: #ffffff;
+		color: #fff;
+		border-color: var(--text-muted);
 	}
 
 	.drawer-content {
 		flex: 1;
 		overflow-y: auto;
 		padding: 32px;
+		scrollbar-width: thin;
+		scrollbar-color: var(--border-color) transparent;
 	}
 
-	.info-section,
-	.form-section {
+	.id-banner {
+		background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+		border: 1px solid #334155;
+		border-radius: 12px;
+		padding: 16px 20px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 		margin-bottom: 32px;
 	}
 
-	.info-section h3,
-	.form-section h3 {
-		font-size: 18px;
+	.id-info {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.id-label {
+		font-size: 0.65rem;
+		font-weight: 800;
+		color: var(--accent-color);
+		letter-spacing: 0.05em;
+	}
+
+	.id-value {
+		font-family: 'JetBrains Mono', 'Fira Code', monospace;
+		font-size: 1.1rem;
 		font-weight: 600;
-		margin: 0 0 20px 0;
-		color: #ffffff;
+		color: #fff;
 	}
 
-	.info-grid {
+	.banner-copy-btn {
+		background: rgba(59, 130, 246, 0.1);
+		border: 1px solid rgba(59, 130, 246, 0.2);
+		color: var(--accent-color);
+		padding: 8px 12px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 0.8rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.banner-copy-btn:hover {
+		background: var(--accent-color);
+		color: #fff;
+	}
+
+	.section-divider {
+		display: flex;
+		align-items: center;
+		margin: 24px 0 16px 0;
+	}
+
+	.divider-text {
+		font-size: 0.7rem;
+		font-weight: 700;
+		color: var(--text-muted);
+		letter-spacing: 0.1em;
+		padding-right: 12px;
+	}
+
+	.section-divider::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: var(--border-color);
+	}
+
+	.field-container {
+		margin-bottom: 24px;
+	}
+
+	.field-label {
+		display: block;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--text-main);
+		margin-bottom: 8px;
+	}
+
+	.field-label.required::after {
+		content: '*';
+		color: var(--error-red);
+		margin-left: 4px;
+	}
+
+	.input-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.input-icon {
+		position: absolute;
+		left: 12px;
+		color: var(--text-muted);
+		pointer-events: none;
+	}
+
+	.form-control {
+		width: 100%;
+		background: var(--input-bg);
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		padding: 12px 12px 12px 42px;
+		color: #fff;
+		font-size: 0.95rem;
+		transition: all 0.2s;
+	}
+
+	.form-control:focus {
+		outline: none;
+		border-color: var(--accent-color);
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+	}
+
+	.has-error .form-control {
+		border-color: var(--error-red);
+	}
+
+	.error-text {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--error-red);
+		font-size: 0.75rem;
+		margin-top: 6px;
+	}
+
+	.field-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		grid-template-columns: 1fr 1fr;
 		gap: 16px;
-		margin-bottom: 16px;
 	}
 
-	.info-item {
+	.access-info-box {
+		background: #16191f;
+		border: 1px solid var(--border-color);
+		border-radius: 12px;
+		padding: 20px;
+		margin-bottom: 24px;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.access-field {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
 	}
 
-	.info-item.full-width {
-		grid-column: 1 / -1;
-	}
-
-	.info-item label {
-		font-size: 13px;
-		font-weight: 500;
-		color: #cccccc;
-	}
-
-	.info-value {
+	.access-label-group {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		background: #2a2d2e;
-		padding: 10px 12px;
+	}
+
+	.label-icon {
+		color: var(--accent-color);
+	}
+
+	.access-label {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
+
+	.access-value-row {
+		display: flex;
+		align-items: center;
+		padding: 10px 14px;
+		background: #0f1115;
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		justify-content: space-between;
+	}
+
+	.access-value-row code {
+		font-family: 'JetBrains Mono', monospace;
+		color: #fff;
+		font-size: 0.9rem;
+	}
+
+	.icon-btn-tinted {
+		background: rgba(59, 130, 246, 0.1);
+		border: none;
+		color: var(--accent-color);
+		width: 28px;
+		height: 28px;
 		border-radius: 6px;
-		border: 1px solid #3e3e42;
-	}
-
-	.info-value code {
-		flex: 1;
-		font-family: 'Consolas', 'Monaco', monospace;
-		font-size: 13px;
-		color: #ffffff;
-		background: transparent;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.info-value code.invitation-link {
-		font-size: 12px;
-	}
-
-	.copy-btn {
-		background: transparent;
-		border: 1px solid #3e3e42;
-		color: #cccccc;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		cursor: pointer;
-		padding: 6px;
-		border-radius: 4px;
+		transition: background 0.2s;
+	}
+
+	.icon-btn-tinted:hover {
+		background: rgba(59, 130, 246, 0.2);
+	}
+
+	.limit-control-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.toggle-container {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		background: #0f1115;
+		padding: 4px 12px;
+		border-radius: 20px;
+		border: 1px solid var(--border-color);
+	}
+
+	.toggle-switch-btn {
+		position: relative;
+		width: 36px;
+		height: 20px;
+		background: #232831;
+		border-radius: 10px;
+		border: none;
+		cursor: pointer;
+		transition: all 0.3s;
+		padding: 0;
+	}
+
+	.toggle-switch-btn.active {
+		background: var(--accent-color);
+	}
+
+	.toggle-dot {
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 14px;
+		height: 14px;
+		background: #fff;
+		border-radius: 50%;
+		transition: all 0.3s;
+	}
+
+	.toggle-switch-btn.active .toggle-dot {
+		left: calc(100% - 17px);
+	}
+
+	.toggle-text {
+		font-size: 0.85rem;
+		color: #fff;
+		min-width: 110px;
+	}
+
+	.number-input {
+		width: 70px;
+		background: #1e2229;
+		border: 1px solid var(--border-color);
+		border-radius: 6px;
+		padding: 8px 10px;
+		color: #fff;
+		font-size: 0.9rem;
+		text-align: center;
+	}
+
+	.form-control-area {
+		width: 100%;
+		background: var(--input-bg);
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		padding: 12px;
+		color: #fff;
+		font-size: 0.95rem;
+		resize: vertical;
+		font-family: inherit;
+		min-height: 80px;
+	}
+
+	.form-control-area:focus {
+		outline: none;
+		border-color: var(--accent-color);
+	}
+
+	.footer-settings {
+		margin-top: 8px;
+		padding-top: 16px;
+		border-top: 1px solid var(--border-color);
+	}
+
+	.radio-group {
+		display: flex;
+		gap: 12px;
+		margin-top: 10px;
+	}
+
+	.radio-btn {
+		background: #16191f;
+		border: 1px solid var(--border-color);
+		color: var(--text-muted);
+		padding: 10px 16px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-size: 0.85rem;
+		font-weight: 500;
+		cursor: pointer;
+		flex: 1;
+		transition: all 0.2s;
+	}
+
+	.radio-btn.active {
+		border-color: var(--accent-color);
+		background: rgba(59, 130, 246, 0.05);
+		color: #fff;
+	}
+
+	.radio-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		border: 2px solid var(--text-muted);
+		background: transparent;
+	}
+
+	.radio-btn.active .radio-dot {
+		border-color: var(--accent-color);
+		background: var(--accent-color);
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+	}
+
+	.drawer-footer {
+		padding: 24px 32px;
+		border-top: 1px solid var(--border-color);
+		display: flex;
+		gap: 16px;
+		background: var(--drawer-header-bg);
+	}
+
+	.footer-btn {
+		flex: 1;
+		padding: 14px;
+		border-radius: 8px;
+		font-size: 0.95rem;
+		font-weight: 600;
+		cursor: pointer;
 		transition: all 0.2s;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		flex-shrink: 0;
+		gap: 10px;
 	}
 
-	.copy-btn:hover {
-		background: #094771;
-		border-color: #007acc;
-		color: #ffffff;
-	}
-
-	.info-hint {
-		font-size: 12px;
-		color: #888888;
-		margin: 4px 0 0 0;
-		line-height: 1.5;
-	}
-
-	.form-group {
-		margin-bottom: 20px;
-	}
-
-	.form-group label {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 14px;
-		font-weight: 500;
-		color: #cccccc;
-		margin-bottom: 8px;
-	}
-
-	.form-group label.required::after {
-		content: '*';
-		color: #f48771;
-		margin-left: 4px;
-	}
-
-	.form-input,
-	.form-textarea {
-		width: 100%;
-		padding: 10px 12px;
-		background: #2a2d2e;
-		border: 1px solid #3e3e42;
-		border-radius: 6px;
-		color: #ffffff;
-		font-size: 14px;
-		font-family: inherit;
-		transition: all 0.2s;
-		outline: none;
-	}
-
-	.form-input:focus,
-	.form-textarea:focus {
-		border-color: #007acc;
-		background: #333333;
-	}
-
-	.form-input.error {
-		border-color: #f48771;
-	}
-
-	.form-textarea {
-		resize: vertical;
-		min-height: 80px;
-	}
-
-	.form-row {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-		gap: 16px;
-	}
-
-	.error-message {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		color: #f48771;
-		font-size: 12px;
-		margin-top: 6px;
-	}
-
-	.participants-control {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-
-	.checkbox-wrapper {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		cursor: pointer;
-	}
-
-	.checkbox {
-		width: 18px;
-		height: 18px;
-		cursor: pointer;
-		accent-color: #007acc;
-	}
-
-	.checkbox-wrapper span {
-		font-size: 14px;
-		color: #cccccc;
-	}
-
-	.drawer-footer {
-		padding: 20px 32px;
-		border-top: 1px solid #3e3e42;
-		display: flex;
-		justify-content: flex-end;
-		gap: 12px;
-	}
-
-	.btn-primary,
-	.btn-secondary {
-		padding: 10px 24px;
-		border-radius: 6px;
-		font-size: 14px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.2s;
+	.footer-btn.primary {
+		background: var(--accent-color);
+		color: #fff;
 		border: none;
 	}
 
-	.btn-primary {
-		background: #007acc;
-		color: #ffffff;
+	.footer-btn.primary:hover {
+		background: var(--accent-hover);
+		transform: translateY(-1px);
 	}
 
-	.btn-primary:hover:not(:disabled) {
-		background: #0e639c;
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.5;
+	.footer-btn.primary:disabled {
+		opacity: 0.7;
 		cursor: not-allowed;
+		transform: none;
 	}
 
-	.btn-secondary {
+	.footer-btn.secondary {
 		background: transparent;
-		border: 1px solid #3e3e42;
-		color: #cccccc;
+		color: var(--text-muted);
+		border: 1px solid var(--border-color);
 	}
 
-	.btn-secondary:hover:not(:disabled) {
-		background: #2a2d2e;
-		border-color: #007acc;
-		color: #ffffff;
+	.footer-btn.secondary:hover {
+		border-color: var(--text-muted);
+		color: #fff;
 	}
 
-	.btn-secondary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
+	/* Spinner */
+	.spinner {
+		width: 18px;
+		height: 18px;
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
 	}
 
-	/* Scrollbar */
-	.drawer-content::-webkit-scrollbar {
-		width: 10px;
-	}
-
-	.drawer-content::-webkit-scrollbar-track {
-		background: #1e1e1e;
-	}
-
-	.drawer-content::-webkit-scrollbar-thumb {
-		background: #424242;
-		border-radius: 5px;
-	}
-
-	.drawer-content::-webkit-scrollbar-thumb:hover {
-		background: #4e4e4e;
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 </style>
