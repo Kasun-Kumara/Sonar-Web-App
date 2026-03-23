@@ -1,0 +1,711 @@
+.vscode-settings-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-primary, #1e1e1e);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary, #ccc);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.vscode-settings-header-tabs {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-secondary, #252526);
+  height: 35px;
+  -webkit-app-region: drag;
+  border-bottom: 1px solid var(--border);
+}
+
+.vscode-settings-tab {
+  padding: 0 16px;
+  line-height: 35px;
+  font-size: 14px;
+  color: var(--text-muted);
+  border-top: 1px solid transparent;
+  cursor: default;
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vscode-settings-tab.active {
+  color: var(--text-primary);
+  border-top: 1px solid var(--accent);
+  background-color: var(--bg-primary);
+}
+
+.vscode-settings-tab-close {
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #ccc);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  width: 22px;
+  border-radius: 4px;
+  padding: 0;
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
+.vscode-settings-tab-close:hover {
+  background-color: var(--bg-hover, #2a2d2e);
+  opacity: 1;
+}
+
+.vscode-settings-searchbar-container {
+  padding: 12px 20px;
+  background-color: var(--bg-primary);
+}
+
+.vscode-search-input-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+}
+
+.vscode-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.vscode-search-input {
+  width: 100%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 6px 10px 6px 32px;
+  font-size: 13px;
+  outline: none;
+  border-radius: 2px;
+}
+
+.vscode-search-input:focus {
+  border-color: var(--accent);
+}
+
+.vscode-settings-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+.vscode-settings-sidebar {
+  width: 250px;
+  padding: 14px 0;
+  overflow-y: auto;
+}
+
+.vscode-settings-tree {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.vscode-settings-tree li {
+  padding: 6px 14px 6px 34px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: background-color 0.1s;
+}
+
+.vscode-settings-tree li:hover {
+  background-color: var(--bg-hover);
+}
+
+.vscode-settings-tree li.active {
+  background-color: var(--bg-hover);
+}
+
+.vscode-settings-content {
+  flex: 1;
+  padding: 28px 24px 40px;
+  overflow-y: auto;
+}
+
+.vscode-settings-section {
+  margin-top: 20px;
+  margin-bottom: 40px;
+}
+
+.vscode-settings-section-title {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  margin-top: 0;
+}
+
+.vscode-setting-item {
+  margin-bottom: 24px;
+}
+
+.vscode-setting-title {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.vscode-setting-title .highlight {
+  font-weight: 500;
+}
+
+.vscode-setting-description {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.vscode-setting-control {
+  margin-top: 8px;
+}
+
+/* Range / slider control */
+.vscode-range-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vscode-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 220px;
+  height: 6px;
+  background: var(--bg-tertiary, #2d2d2d);
+  border: 1px solid var(--border, #3c3c3c);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.vscode-range:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vscode-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent, #0078d4);
+  border: 2px solid var(--text-primary, #ccc);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.vscode-range:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+  background: var(--text-muted, #666);
+  border-color: var(--border, #3c3c3c);
+  box-shadow: none;
+}
+
+.vscode-range:hover:not(:disabled) {
+  border-color: var(--accent, #0078d4);
+}
+
+.vscode-range-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  min-width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.vscode-select {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 4px;
+  border-radius: 2px;
+  font-size: 13px;
+  min-width: 250px;
+  outline: none;
+  font-family: inherit;
+}
+
+.vscode-select:focus {
+  border-color: var(--accent);
+}
+
+.vscode-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.vscode-checkbox {
+  appearance: none;
+  background-color: var(--bg-secondary);
+  margin: 0;
+  font: inherit;
+  color: currentColor;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  outline: none;
+}
+
+.vscode-checkbox::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--text-primary);
+  background-color: CanvasText;
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.vscode-checkbox:checked::before {
+  transform: scale(1);
+}
+
+.vscode-checkbox:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.vscode-checkbox:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Keyboard Shortcuts Table */
+.shortcuts-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.shortcuts-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: var(--bg-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.1s;
+}
+
+.shortcuts-row:last-child {
+  border-bottom: none;
+}
+
+.shortcuts-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.shortcuts-action {
+  color: var(--text-primary);
+}
+
+.shortcuts-row .kbd-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.shortcuts-row .kbd-wrap kbd {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-primary);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.kbd-sep {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 0 1px;
+}
+
+/* Activity Log */
+.activity-log-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.activity-log-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.activity-log-btn.primary {
+  background-color: var(--accent, #007acc);
+  color: #fff;
+  border-color: var(--accent, #007acc);
+}
+
+.activity-log-btn.primary:hover {
+  opacity: 0.9;
+}
+
+.activity-log-btn.secondary {
+  background-color: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.activity-log-btn.secondary:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.activity-log-btn.danger {
+  background-color: transparent;
+  color: #f44747;
+  border-color: #f44747;
+}
+
+.activity-log-btn.danger:hover {
+  background-color: rgba(244, 71, 71, 0.15);
+}
+
+.activity-log-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.activity-log-preview {
+  margin-top: 8px;
+}
+
+.activity-log-preview .shortcuts-header {
+  display: grid;
+  grid-template-columns: 100px 200px 1fr;
+  padding: 8px 16px;
+}
+
+.activity-log-preview .shortcuts-row {
+  display: grid;
+  grid-template-columns: 100px 200px 1fr;
+  padding: 6px 16px;
+}
+
+.activity-log-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-log-type {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.activity-log-type--status_online {
+  color: #f44336;
+}
+
+.activity-log-type--status_offline {
+  color: #4caf50;
+}
+
+.activity-log-type--app_blur {
+  color: #ff9800;
+}
+
+.activity-log-type--app_focus {
+  color: var(--accent, #007acc);
+}
+
+.activity-log-type--clipboard_copy {
+  color: #ab47bc;
+}
+
+.activity-log-type--clipboard_paste_external {
+  color: #f44336;
+}
+
+.activity-log-details {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-log-note {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Account Section */
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.account-team-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  padding: 12px 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.account-members-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.account-members-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.account-members-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.account-members-list {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.account-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.account-member-row:last-child {
+  border-bottom: none;
+}
+
+.account-member-index {
+  color: var(--text-muted);
+  min-width: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-member-id {
+  color: var(--text-primary);
+}
+
+.account-add-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-member-input {
+  flex: 1;
+  max-width: 300px;
+  padding-left: 10px !important;
+}
+
+.account-error {
+  font-size: 12px;
+  color: #f44747;
+}
+
+.account-signout {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.account-success {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4caf50;
+}
+
+/* Admin Password Form */
+.admin-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+}
+
+.admin-password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-password-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.admin-password-input {
+  padding-left: 10px !important;
+  padding-right: 32px !important;
+  width: 100%;
+}
+
+.admin-password-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.admin-password-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 3px;
+}
+
+.admin-password-eye:hover {
+  color: var(--text-primary);
+}
+
+/* Security Section */
+.security-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.security-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.security-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 380px;
+}
+
+.security-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.security-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.security-input {
+  width: 100%;
+  padding-left: 10px !important;
+  padding-right: 34px !important;
+}
+
+.security-eye-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 3px;
+}
+
+.security-eye-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.security-success {
+  font-size: 12px;
+  color: #4caf50;
+}

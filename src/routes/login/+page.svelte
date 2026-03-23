@@ -1,22 +1,92 @@
 <script lang="ts">
   import { Github, Mail, User, Briefcase, Lock, Building2, Eye, EyeOff, Check } from "lucide-svelte";
   import { goto } from "$app/navigation";
+  import { validateTeamCredentials, registerTeam } from "$lib/appwrite";
 
   let isLogin = $state(true);
   let rememberMe = $state(false);
   let acceptTerms = $state(false);
   let accountType = $state("individual"); // 'individual' | 'organization'
   let showPassword = $state(false);
+  let email = $state("");
+  let password = $state("");
+  let confirmPassword = $state("");
+  let loading = $state(false);
+  let error = $state("");
 
   function toggleMode() {
     isLogin = !isLogin;
+    error = "";
   }
 
-  function handleSubmit(event: Event) {
+  async function handleSubmit(event: Event) {
     event.preventDefault();
-    // In a real app, we would validate credentials here.
-    // For now, any input navigates to the admin panel.
-    goto("/admin-panel");
+    loading = true;
+    error = "";
+
+    try {
+      // Extract team name from email (use email as team name)
+      const teamName = email.split("@")[0] || email;
+
+      if (isLogin) {
+        // LOGIN MODE
+        const team = await validateTeamCredentials(teamName, password);
+
+        if (team) {
+          // Store session in localStorage
+          localStorage.setItem('sonar_session', JSON.stringify(team));
+
+          // Check if admin and redirect accordingly
+          if (team.role === 'admin') {
+            goto("/admin-panel");
+          } else {
+            goto("/");
+          }
+        } else {
+          error = "Invalid team name or password";
+        }
+      } else {
+        // SIGNUP MODE
+        if (!acceptTerms) {
+          error = "You must accept the Terms & Conditions";
+          loading = false;
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          error = "Passwords do not match";
+          loading = false;
+          return;
+        }
+
+        if (password.length < 4) {
+          error = "Password must be at least 4 characters";
+          loading = false;
+          return;
+        }
+
+        // Register new team
+        const result = await registerTeam(teamName, password, []);
+
+        if (result.success) {
+          // Auto-login after registration
+          const team = await validateTeamCredentials(teamName, password);
+          if (team) {
+            localStorage.setItem('sonar_session', JSON.stringify(team));
+            goto("/");
+          } else {
+            error = "Account created but login failed. Please try logging in.";
+          }
+        } else {
+          error = result.error || "Failed to create account";
+        }
+      }
+    } catch (err) {
+      error = isLogin ? "Login failed. Please try again." : "Account creation failed. Please try again.";
+      console.error("Auth error:", err);
+    } finally {
+      loading = false;
+    }
   }
 </script>
 
@@ -135,7 +205,8 @@
             <Mail class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
             <input
               type="email"
-              placeholder="Email"
+              placeholder="Team Name / Email"
+              bind:value={email}
               class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
             />
           </label>
@@ -145,6 +216,7 @@
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password"
+              bind:value={password}
               class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-10 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
             />
             <button
@@ -160,12 +232,19 @@
             </button>
           </label>
 
+          {#if error}
+            <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800/30 dark:bg-red-900/10 dark:text-red-400">
+              {error}
+            </div>
+          {/if}
+
           {#if !isLogin}
             <label class="relative block group">
               <Lock class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Confirm password"
+                bind:value={confirmPassword}
                 class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-10 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
               />
             </label>
@@ -254,9 +333,10 @@
 
           <button
             type="submit"
-            class="mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-linear-to-r from-cyan-500 to-blue-500 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 transition-all hover:from-cyan-400 hover:to-blue-500"
+            disabled={loading}
+            class="mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-linear-to-r from-cyan-500 to-blue-500 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 transition-all hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLogin ? "Login" : "Create Account"}
+            {loading ? "Logging in..." : isLogin ? "Login" : "Create Account"}
           </button>
         </form>
 

@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import type { Team } from './types';
-import { validateTeamCredentials, getTeamById } from './appwrite';
+import type { Team } from '$lib/types';
+import { validateTeamCredentials, getTeamById } from '$lib/appwrite';
 
 interface AuthState {
 	user: Team | null;

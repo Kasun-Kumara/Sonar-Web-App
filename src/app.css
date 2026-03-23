@@ -148,3 +148,40 @@ input:-webkit-autofill:active {
 *::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
+
+/* Admin Panel Theme Variables */
+:root[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --bg-hover: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --border-focus: #d1d5db;
+  --accent: #3b82f6;
+  --accent-transparent: rgba(59, 130, 246, 0.1);
+  --online: #10b981;
+  --offline: #6b7280;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+:root[data-theme="dark"] {
+  --bg-primary: #0a0a0b;
+  --bg-secondary: #18181b;
+  --bg-tertiary: #27272a;
+  --bg-hover: rgba(255, 255, 255, 0.03);
+  --text-primary: #fafafa;
+  --text-secondary: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(255, 255, 255, 0.15);
+  --accent: #3b82f6;
+  --accent-transparent: rgba(59, 130, 246, 0.1);
+  --online: #10b981;
+  --offline: #6b7280;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
