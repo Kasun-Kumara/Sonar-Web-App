@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Github, Mail, User, Briefcase, Lock, Building2 } from "lucide-svelte";
+  import { Github, Mail, User, Briefcase, Lock, Building2, Eye, EyeOff } from "lucide-svelte";
   import { goto } from "$app/navigation";
 
   let isLogin = $state(true);
   let accountType = $state("individual"); // 'individual' | 'organization'
+  let showPassword = $state(false);
 
   function toggleMode() {
     isLogin = !isLogin;
@@ -100,63 +101,74 @@
           {/if}
 
           {#if !isLogin && accountType === "organization"}
-            <label class="relative block">
-              <Building2 class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <label class="relative block group">
+              <Building2 class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Organization Name"
-                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-cyan-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100"
+                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
               />
             </label>
           {/if}
 
           {#if !isLogin}
-            <label class="relative block">
-              <User class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <label class="relative block group">
+              <User class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Name"
-                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-cyan-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100"
+                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
               />
             </label>
           {/if}
 
           {#if !isLogin && accountType === "organization"}
-            <label class="relative block">
-              <Briefcase class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <label class="relative block group">
+              <Briefcase class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Your role in organization"
-                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-cyan-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100"
+                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
               />
             </label>
           {/if}
 
-          <label class="relative block">
-            <Mail class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <label class="relative block group">
+            <Mail class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
             <input
               type="email"
               placeholder="Email"
-              class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-cyan-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100"
+              class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
             />
           </label>
 
-          <label class="relative block">
-            <Lock class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <label class="relative block group">
+            <Lock class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
-              class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-cyan-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100"
+              class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-10 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
             />
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors"
+              onclick={() => (showPassword = !showPassword)}
+            >
+              {#if showPassword}
+                <EyeOff class="h-4 w-4" />
+              {:else}
+                <Eye class="h-4 w-4" />
+              {/if}
+            </button>
           </label>
 
           {#if !isLogin}
-            <label class="relative block">
-              <Lock class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <label class="relative block group">
+              <Lock class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-cyan-500 transition-colors" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Confirm password"
-                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-cyan-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100"
+                class="h-11 w-full rounded-xl border border-zinc-200 bg-white/70 pl-9 pr-10 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 dark:focus:border-cyan-400 dark:focus:ring-cyan-400/20"
               />
             </label>
           {/if}
