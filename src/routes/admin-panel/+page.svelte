@@ -407,7 +407,18 @@
 
 					<div class="hackathons-grid">
 						{#each hackathons as hackathon}
-							<div class="hackathon-card">
+							<div
+								class="hackathon-card clickable"
+								role="button"
+								tabindex="0"
+								onclick={() => goto(`/admin-panel/hackathon/${hackathon.id}`)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										goto(`/admin-panel/hackathon/${hackathon.id}`);
+									}
+								}}
+								aria-label="Edit {hackathon.name} hackathon">
 								<div class="hackathon-card-header">
 									<h3>{hackathon.name}</h3>
 									<span class="status-badge {hackathon.status}">{hackathon.status}</span>
@@ -434,8 +445,22 @@
 									</div>
 								</div>
 								<div class="hackathon-card-footer">
-									<button class="hackathon-action-btn">View Details</button>
-									<button class="hackathon-action-btn secondary">Edit</button>
+									<button
+										class="hackathon-action-btn"
+										onclick={(e) => {
+											e.stopPropagation();
+											goto(`/admin-panel/hackathon/${hackathon.id}`);
+										}}>
+										View Details
+									</button>
+									<button
+										class="hackathon-action-btn secondary"
+										onclick={(e) => {
+											e.stopPropagation();
+											goto(`/admin-panel/hackathon/${hackathon.id}`);
+										}}>
+										Edit
+									</button>
 								</div>
 							</div>
 						{/each}
